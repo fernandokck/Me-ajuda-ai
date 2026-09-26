@@ -25,7 +25,7 @@ class App {
   constructor() {
     this.root = document.getElementById('app-root');
     this.currentTab = 'dash';
-    this.isDark = storage.get('theme', 'dark') === 'dark';
+    this.isDark = storage.get('theme', 'light') === 'dark';
     
     this.init();
   }

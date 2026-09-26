@@ -8,43 +8,51 @@
   justify-content: center;
   padding: 24px;
   overflow: hidden;
-  background: radial-gradient(circle at 20% 20%, #1e1b4b 0%, #0b1020 70%, #030712 100%);
+  background: radial-gradient(circle at 15% 15%, #fffbf8 0%, #fff4ec 35%, #fce9dd 70%, #f7ded1 100%);
+}
+
+[data-theme="dark"] #login-screen {
+  background: radial-gradient(circle at 20% 20%, #201712 0%, #15110f 60%, #0d0a08 100%);
 }
 
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.5;
+  filter: blur(70px);
+  opacity: 0.6;
   animation: float 14s ease-in-out infinite;
   pointer-events: none;
 }
 
 .blob1 {
-  width: 320px;
-  height: 320px;
-  background: #ea7a40;
+  width: 360px;
+  height: 360px;
+  background: #fed9c3;
   top: -80px;
   left: -60px;
 }
 
 .blob2 {
-  width: 380px;
-  height: 380px;
-  background: #f28d4e;
+  width: 420px;
+  height: 420px;
+  background: #ffe5d6;
   bottom: -100px;
   right: -60px;
   animation-delay: -5s;
 }
 
 .blob3 {
-  width: 260px;
-  height: 260px;
-  background: #df682c;
+  width: 280px;
+  height: 280px;
+  background: #fcd0b8;
   top: 45%;
   left: 65%;
   animation-delay: -9s;
 }
+
+[data-theme="dark"] .blob1 { background: #ea7a40; opacity: 0.25; }
+[data-theme="dark"] .blob2 { background: #f28d4e; opacity: 0.25; }
+[data-theme="dark"] .blob3 { background: #df682c; opacity: 0.25; }
 
 @keyframes float {
   0%, 100% {
@@ -58,15 +66,23 @@
 .login-card {
   position: relative;
   z-index: 10;
-  background: var(--surface-card);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.93);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(234, 122, 64, 0.16);
   border-radius: var(--radius-lg);
-  padding: 40px 32px;
+  padding: 42px 34px;
   width: 100%;
-  max-width: 420px;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+  max-width: 425px;
+  box-shadow: 0 20px 45px -10px rgba(234, 122, 64, 0.12), 0 8px 20px -4px rgba(15, 23, 42, 0.05);
   text-align: center;
   animation: riseIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="dark"] .login-card {
+  background: rgba(22, 29, 44, 0.92);
+  border-color: rgba(234, 122, 64, 0.2);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
 }
 
 @keyframes riseIn {
@@ -90,7 +106,7 @@
   justify-content: center;
   font-size: 32px;
   margin: 0 auto 16px;
-  box-shadow: 0 8px 24px rgba(var(--brand-rgb), 0.38);
+  box-shadow: 0 10px 26px rgba(var(--brand-rgb), 0.36);
   animation: pulseLogo 3s ease-in-out infinite;
 }
 
@@ -108,6 +124,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   margin-bottom: 6px;
+  color: var(--text-main);
 }
 
 .login-card p.subtext {
@@ -134,10 +151,14 @@
 }
 
 .login-note {
-  margin-top: 20px;
+  margin-top: 22px;
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.5;
+  background: var(--brand-light);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(var(--brand-rgb), 0.12);
 }
 
 /* Onboarding / Center Screens */

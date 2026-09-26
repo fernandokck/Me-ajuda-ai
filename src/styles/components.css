@@ -65,7 +65,7 @@
 
 .btn-google:hover {
   background: var(--surface-hover);
-  border-color: #cbd5e1;
+  border-color: rgba(var(--brand-rgb), 0.35);
 }
 
 /* Cards */
