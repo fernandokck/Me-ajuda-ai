@@ -77,7 +77,7 @@ export function computeBadge(profile) {
     return {
       nome: 'No Controle',
       icone: '🧭',
-      cor: '#3b5bfd',
+      cor: '#ea7a40',
       desc: 'Você tem controle claro do seu dinheiro e fecha os meses no positivo. Está pronto para dar os próximos passos rumo aos investimentos.'
     };
   }

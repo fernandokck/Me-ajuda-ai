@@ -317,6 +317,16 @@ export function renderDashboard(container, user, onDataChanged) {
     rowVencimento.classList.toggle('hidden', !checkRecorrente.checked);
   });
 
+  // Date picker click ease
+  const inputData = container.querySelector('#tx-data');
+  if (inputData) {
+    inputData.addEventListener('click', () => {
+      try {
+        inputData.showPicker?.();
+      } catch (_) {}
+    });
+  }
+
   // Add transaction submit
   const formAdd = container.querySelector('#form-add-tx');
   formAdd.addEventListener('submit', (e) => {
