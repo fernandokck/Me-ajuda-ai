@@ -1,0 +1,418 @@
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.btn-primary {
+  background: var(--brand-gradient);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(59, 91, 253, 0.35);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 20px rgba(59, 91, 253, 0.45);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--text-muted);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  color: var(--text-main);
+  background: var(--surface-hover);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+
+/* Google OAuth Mock Button */
+.btn-google {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-google:hover {
+  background: var(--surface-hover);
+  border-color: #cbd5e1;
+}
+
+/* Cards */
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+/* Form inputs */
+.field {
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.field label, .form-row label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.input, .field input, .form-row input, .form-row select, .q input, .q select {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus, .field input:focus, .form-row input:focus, .form-row select:focus, .q input:focus, .q select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 91, 253, 0.15);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.check-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+/* KPI Cards */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.kpi:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand);
+}
+
+.kpi span.kpi-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: block;
+}
+
+.kpi strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 6px;
+  letter-spacing: -0.02em;
+}
+
+.kpi.pos strong {
+  color: var(--green);
+}
+
+.kpi.neg strong {
+  color: var(--red);
+}
+
+.kpi-icon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: var(--brand-light);
+  color: var(--brand);
+}
+
+/* Health Badge Box */
+.health-box {
+  background: var(--surface-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.health-badge {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.health-desc {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 200px;
+  line-height: 1.4;
+}
+
+/* Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tag-salario {
+  background: var(--green-bg);
+  color: var(--green-text);
+}
+
+.tag-contafixa {
+  background: var(--red-bg);
+  color: var(--red-text);
+}
+
+.tag-gasto {
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+
+.tag-investimento {
+  background: var(--blue-tag-bg);
+  color: var(--blue-tag);
+}
+
+/* Tables */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 8px;
+  border-bottom: 1.5px solid var(--border);
+}
+
+td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+tr:hover td {
+  background: var(--surface-hover);
+}
+
+.btn-del {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.btn-del:hover {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  padding: 24px 12px;
+}
+
+/* Toast Notifications */
+#toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  background: var(--surface-card);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--brand);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast.toast-success {
+  border-left-color: var(--green);
+}
+
+.toast.toast-error {
+  border-left-color: var(--red);
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* PWA Install Banner / Button */
+.pwa-install-banner {
+  background: linear-gradient(135deg, rgba(59, 91, 253, 0.12), rgba(124, 58, 237, 0.12));
+  border: 1px solid rgba(59, 91, 253, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+  animation: riseIn 0.4s ease;
+}
+
+.pwa-install-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.pwa-install-banner-text span.icon {
+  font-size: 24px;
+}

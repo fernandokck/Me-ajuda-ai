@@ -1,0 +1,118 @@
+:root {
+  --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Light Theme */
+  --bg-app: #f4f6fb;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --border: #e2e8f0;
+  --border-focus: #3b5bfd;
+  
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  /* Brand and Accent */
+  --brand: #3b5bfd;
+  --brand-light: #eff3ff;
+  --brand-gradient: linear-gradient(135deg, #3b5bfd 0%, #6366f1 50%, #7c3aed 100%);
+  --brand-hover: #2d4ce0;
+  
+  /* Financial status colors */
+  --green: #10b981;
+  --green-bg: #ecfdf5;
+  --green-text: #047857;
+  
+  --red: #ef4444;
+  --red-bg: #fef2f2;
+  --red-text: #b91c1c;
+  
+  --amber: #f59e0b;
+  --amber-bg: #fffbeb;
+  --amber-text: #b45309;
+  
+  --purple: #8b5cf6;
+  --purple-bg: #f5f3ff;
+  --purple-text: #6d28d9;
+  
+  --blue-tag: #0284c7;
+  --blue-tag-bg: #e0f2fe;
+
+  /* Shadows & Elevation */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 14px 30px -4px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  --shadow-glow: 0 0 20px rgba(59, 91, 253, 0.25);
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Dark Theme via attribute */
+[data-theme="dark"] {
+  --bg-app: #0b1020;
+  --surface: #121a2e;
+  --surface-hover: #19233c;
+  --surface-card: #151e36;
+  --surface-glass: rgba(18, 26, 46, 0.85);
+  --border: #22304d;
+  --border-focus: #4e6efd;
+  
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-inverse: #0f172a;
+
+  --brand-light: rgba(59, 91, 253, 0.15);
+  --green-bg: rgba(16, 185, 129, 0.15);
+  --green-text: #34d399;
+  --red-bg: rgba(239, 68, 68, 0.15);
+  --red-text: #f87171;
+  --amber-bg: rgba(245, 158, 11, 0.15);
+  --amber-text: #fbbf24;
+  --purple-bg: rgba(139, 92, 246, 0.15);
+  --purple-text: #a78bfa;
+  --blue-tag-bg: rgba(2, 132, 199, 0.15);
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 14px 35px rgba(0, 0, 0, 0.6);
+}
+
+/* System preference fallback when not explicitly set to light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-app: #0b1020;
+    --surface: #121a2e;
+    --surface-hover: #19233c;
+    --surface-card: #151e36;
+    --surface-glass: rgba(18, 26, 46, 0.85);
+    --border: #22304d;
+    --border-focus: #4e6efd;
+    
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-inverse: #0f172a;
+
+    --brand-light: rgba(59, 91, 253, 0.15);
+    --green-bg: rgba(16, 185, 129, 0.15);
+    --green-text: #34d399;
+    --red-bg: rgba(239, 68, 68, 0.15);
+    --red-text: #f87171;
+    --amber-bg: rgba(245, 158, 11, 0.15);
+    --amber-text: #fbbf24;
+    --purple-bg: rgba(139, 92, 246, 0.15);
+    --purple-text: #a78bfa;
+    --blue-tag-bg: rgba(2, 132, 199, 0.15);
+    
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 14px 35px rgba(0, 0, 0, 0.6);
+  }
+}

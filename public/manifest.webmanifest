@@ -1,0 +1,33 @@
+{
+  "name": "Me ajuda aí - Finanças",
+  "short_name": "Me ajuda aí",
+  "description": "Organize suas contas, entenda para onde vai seu dinheiro e conquiste sua saúde financeira.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#3b5bfd",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "48x48 72x72 96x96",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["finance", "productivity", "utilities"],
+  "lang": "pt-BR"
+}
