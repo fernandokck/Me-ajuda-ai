@@ -49,11 +49,18 @@ export function renderLogin(container, onLoginSuccess) {
   // Bind Google login
   const btnGoogle = container.querySelector('#btn-google-login');
   btnGoogle.addEventListener('click', async () => {
+    const originalContent = btnGoogle.innerHTML;
     try {
+      btnGoogle.disabled = true;
+      btnGoogle.innerHTML = `<span>⏳</span> Conectando ao Google...`;
       const user = await auth.loginWithGoogle();
-      showToast(`Bem-vindo, ${user.name}!`, 'success');
-      onLoginSuccess(user);
+      if (user) {
+        showToast(`Bem-vindo, ${user.name || 'Usuário'}!`, 'success');
+        onLoginSuccess(user);
+      }
     } catch (e) {
+      btnGoogle.disabled = false;
+      btnGoogle.innerHTML = originalContent;
       showToast(e.message || 'Erro ao entrar com Google', 'error');
     }
   });
@@ -63,11 +70,23 @@ export function renderLogin(container, onLoginSuccess) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const emailInput = container.querySelector('#login-email');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
     try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Entrando...';
+      }
       const user = await auth.loginWithEmail(emailInput.value);
-      showToast('Login realizado com sucesso!', 'success');
-      onLoginSuccess(user);
+      if (user) {
+        showToast('Login realizado com sucesso!', 'success');
+        onLoginSuccess(user);
+      }
     } catch (err) {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
       showToast(err.message || 'Erro ao realizar login', 'error');
     }
   });
