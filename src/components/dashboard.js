@@ -1,5 +1,5 @@
 /**
- * Dashboard Component with Budget Goals & Threshold Push Notifications
+ * Dashboard Component with Compact Budget Goals Card and Tab Navigation
  */
 
 import Chart from 'chart.js/auto';
@@ -17,25 +17,10 @@ import { gamification } from '../services/gamification.js';
 import { pwa } from '../services/pwa.js';
 import { showToast } from './toast.js';
 import { showBadgeModal3D } from './badgeModal.js';
-import { openBudgetModal } from './budgetModal.js';
 
 let historyChartInstance = null;
 
-function getCatIcon(cat) {
-  const map = {
-    'Alimentação': '🛒',
-    'Lanches/Besteiras': '🍔',
-    'Transporte': '🚗',
-    'Moradia': '🏠',
-    'Lazer': '🎉',
-    'Saúde': '💊',
-    'Educação': '📚',
-    'Outros': '📦'
-  };
-  return map[cat] || '🏷️';
-}
-
-export function renderDashboard(container, user, onDataChanged) {
+export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
   const userEmail = user.email;
   const kpis = finance.calculateMonthKPIs(userEmail, curMonthKey());
   const recorrentes = finance.getRecurring(userEmail);
@@ -43,6 +28,10 @@ export function renderDashboard(container, user, onDataChanged) {
   const budgetData = budgetService.calculateCategoryProgress(userEmail, curMonthKey());
 
   const showPwaBanner = !pwa.isDismissedOrInstalled();
+
+  let budgetBarColor = 'var(--brand)';
+  if (budgetData.totalPct >= 100) budgetBarColor = 'var(--red)';
+  else if (budgetData.totalPct >= 80) budgetBarColor = 'var(--amber)';
 
   container.innerHTML = `
     <div id="tab-dash" class="view-content-wrapper">
@@ -96,61 +85,29 @@ export function renderDashboard(container, user, onDataChanged) {
         <p class="health-desc">${kpis.health.text}</p>
       </div>
 
-      <!-- 🎯 Metas de Gastos por Categoria (Budget Progress) -->
-      <div class="card card-dash-section" style="margin-bottom: 20px;">
-        <div class="card-title-row">
-          <div>
-            <h3>🎯 Metas de Gastos do Mês</h3>
-            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
-              ${fmtBRL(budgetData.totalSpent)} gastos do teto total de ${fmtBRL(budgetData.totalLimit)} (${budgetData.totalPct}%)
+      <!-- 🎯 Compact Metas de Gastos Card (Clean Banner with 1-click Navigation) -->
+      <div class="card compact-budget-banner" id="btn-goto-metas-dash" title="Clique para ver seu progresso de gastos do mês">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="budget-mini-icon">🎯</div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <strong style="font-size: 14.5px; color: var(--text-main);">Metas de Gastos do Mês</strong>
+                <span class="budget-status-pill" style="color: ${budgetBarColor}; background: ${budgetBarColor}18; border: 1px solid ${budgetBarColor}33;">
+                  ${budgetData.totalPct}% do teto
+                </span>
+              </div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                ${fmtBRL(budgetData.totalSpent)} gastos do limite de ${fmtBRL(budgetData.totalLimit)}
+              </div>
             </div>
           </div>
-          <button id="btn-open-budget-modal" class="btn btn-secondary btn-sm">
-            ⚙️ Ajustar Metas
-          </button>
+          <div class="compact-budget-cta">
+            <span>Clique e veja seu progresso de gastos →</span>
+          </div>
         </div>
-
-        <div class="budget-items-grid">
-          ${budgetData.categoryList
-            .map((item) => {
-              let badgeColor = 'var(--brand)';
-              let badgeText = `${item.pct}%`;
-              let progressColor = 'var(--brand)';
-
-              if (item.status === 'exceeded') {
-                badgeColor = 'var(--red)';
-                progressColor = 'var(--red)';
-                badgeText = `🚨 Excedido (${item.pct}%)`;
-              } else if (item.status === 'warning') {
-                badgeColor = 'var(--amber)';
-                progressColor = 'var(--amber)';
-                badgeText = `⚠️ 80%+ (${item.pct}%)`;
-              }
-
-              return `
-              <div class="budget-item-card ${item.status}">
-                <div class="budget-item-head">
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-size: 18px;">${getCatIcon(item.category)}</span>
-                    <strong>${item.category}</strong>
-                  </div>
-                  <span class="budget-status-pill" style="color: ${badgeColor}; background: ${badgeColor}15; border: 1px solid ${badgeColor}33;">
-                    ${badgeText}
-                  </span>
-                </div>
-
-                <div class="progress-bar" style="margin: 8px 0 6px;">
-                  <div class="progress-bar-inner" style="width: ${Math.min(100, item.pct)}%; background: ${progressColor};"></div>
-                </div>
-
-                <div class="budget-item-footer">
-                  <span>Gasto: <strong>${fmtBRL(item.spent)}</strong></span>
-                  <span>Meta: <strong>${fmtBRL(item.limit)}</strong></span>
-                </div>
-              </div>
-            `;
-            })
-            .join('')}
+        <div class="progress-bar" style="margin-top: 10px; height: 6px;">
+          <div class="progress-bar-inner" style="width: ${Math.min(100, budgetData.totalPct)}%; background: ${budgetBarColor};"></div>
         </div>
       </div>
 
@@ -353,13 +310,11 @@ export function renderDashboard(container, user, onDataChanged) {
     </div>
   `;
 
-  // Bind Budget modal
-  const btnOpenBudget = container.querySelector('#btn-open-budget-modal');
-  if (btnOpenBudget) {
-    btnOpenBudget.addEventListener('click', () => {
-      openBudgetModal(userEmail, () => {
-        onDataChanged();
-      });
+  // Bind Compact Budget card click to navigate to 'metas' tab
+  const btnGotoMetas = container.querySelector('#btn-goto-metas-dash');
+  if (btnGotoMetas && onNavigateTab) {
+    btnGotoMetas.addEventListener('click', () => {
+      onNavigateTab('metas');
     });
   }
 

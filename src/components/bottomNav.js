@@ -1,10 +1,11 @@
 /**
- * Bottom Navigation Dock Component (Clean, Subtle App Bar)
+ * Bottom Navigation Dock Component (Clean, Subtle App Bar with 5 tabs)
  */
 
 export function renderBottomNav(container, activeTab, onTabChange) {
   const tabs = [
     { id: 'dash', label: 'Painel', icon: '📊' },
+    { id: 'metas', label: 'Metas', icon: '🎯' },
     { id: 'score', label: 'Score', icon: '⚡' },
     { id: 'ach', label: 'Conquistas', icon: '🏆' },
     { id: 'perfil', label: 'Perfil', icon: '👤' }
@@ -16,7 +17,7 @@ export function renderBottomNav(container, activeTab, onTabChange) {
         ${tabs
           .map(
             (t) => `
-          <button class="dock-tab-btn ${activeTab === t.id ? 'active' : ''}" data-tab="${t.id}">
+          <button class="dock-tab-btn ${activeTab === t.id ? 'active' : ''}" data-tab="${t.id}" title="${t.label}">
             <span class="dock-tab-icon">${t.icon}</span>
             <span class="dock-tab-label">${t.label}</span>
           </button>

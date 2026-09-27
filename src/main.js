@@ -18,6 +18,7 @@ import { renderOnboarding } from './components/onboarding.js';
 import { renderBadgeReveal } from './components/badgeReveal.js';
 import { renderHeader } from './components/header.js';
 import { renderDashboard } from './components/dashboard.js';
+import { renderMetasView } from './components/metas.js';
 import { renderScoreView } from './components/score.js';
 import { renderAchievements } from './components/achievements.js';
 import { renderProfile } from './components/profile.js';
@@ -95,6 +96,18 @@ class App {
     });
   }
 
+  switchTab(tabId, user, profile) {
+    this.currentTab = tabId;
+    const dockContainer = this.root.querySelector('#dock-container');
+    if (dockContainer) {
+      renderBottomNav(dockContainer, this.currentTab, (tId) => {
+        this.switchTab(tId, user, profile);
+      });
+    }
+    this.renderActiveTabContent(user, profile);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   renderAppShell(user, profile) {
     this.root.innerHTML = `
       <div id="app-shell">
@@ -120,9 +133,7 @@ class App {
     // Render Bottom App Dock Navigation
     const dockContainer = this.root.querySelector('#dock-container');
     renderBottomNav(dockContainer, this.currentTab, (tabId) => {
-      this.currentTab = tabId;
-      this.renderActiveTabContent(user, profile);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.switchTab(tabId, user, profile);
     });
 
     this.renderActiveTabContent(user, profile);
@@ -134,6 +145,12 @@ class App {
 
     if (this.currentTab === 'dash') {
       renderDashboard(content, user, () => {
+        this.renderActiveTabContent(user, profile);
+      }, (tabId) => {
+        this.switchTab(tabId, user, profile);
+      });
+    } else if (this.currentTab === 'metas') {
+      renderMetasView(content, user, () => {
         this.renderActiveTabContent(user, profile);
       });
     } else if (this.currentTab === 'score') {
