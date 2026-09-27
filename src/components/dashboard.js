@@ -1,6 +1,5 @@
 /**
- * Dashboard Component with iPhone / Mobile responsive alignment fixes
- * and automatic 3D badge achievement triggers
+ * Dashboard Component with Budget Goals & Threshold Push Notifications
  */
 
 import Chart from 'chart.js/auto';
@@ -13,18 +12,35 @@ import {
   TAG_CLASSES,
   TAG_LABELS
 } from '../services/finance.js';
+import { budgetService } from '../services/budget.js';
 import { gamification } from '../services/gamification.js';
 import { pwa } from '../services/pwa.js';
 import { showToast } from './toast.js';
 import { showBadgeModal3D } from './badgeModal.js';
+import { openBudgetModal } from './budgetModal.js';
 
 let historyChartInstance = null;
+
+function getCatIcon(cat) {
+  const map = {
+    'Alimentação': '🛒',
+    'Lanches/Besteiras': '🍔',
+    'Transporte': '🚗',
+    'Moradia': '🏠',
+    'Lazer': '🎉',
+    'Saúde': '💊',
+    'Educação': '📚',
+    'Outros': '📦'
+  };
+  return map[cat] || '🏷️';
+}
 
 export function renderDashboard(container, user, onDataChanged) {
   const userEmail = user.email;
   const kpis = finance.calculateMonthKPIs(userEmail, curMonthKey());
   const recorrentes = finance.getRecurring(userEmail);
   const monthlyHistory = finance.getMonthlyHistory(userEmail, 6);
+  const budgetData = budgetService.calculateCategoryProgress(userEmail, curMonthKey());
 
   const showPwaBanner = !pwa.isDismissedOrInstalled();
 
@@ -78,6 +94,64 @@ export function renderDashboard(container, user, onDataChanged) {
       <div class="health-box">
         <span class="health-badge" style="background: ${kpis.health.cor};">${kpis.health.badge}</span>
         <p class="health-desc">${kpis.health.text}</p>
+      </div>
+
+      <!-- 🎯 Metas de Gastos por Categoria (Budget Progress) -->
+      <div class="card card-dash-section" style="margin-bottom: 20px;">
+        <div class="card-title-row">
+          <div>
+            <h3>🎯 Metas de Gastos do Mês</h3>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+              ${fmtBRL(budgetData.totalSpent)} gastos do teto total de ${fmtBRL(budgetData.totalLimit)} (${budgetData.totalPct}%)
+            </div>
+          </div>
+          <button id="btn-open-budget-modal" class="btn btn-secondary btn-sm">
+            ⚙️ Ajustar Metas
+          </button>
+        </div>
+
+        <div class="budget-items-grid">
+          ${budgetData.categoryList
+            .map((item) => {
+              let badgeColor = 'var(--brand)';
+              let badgeText = `${item.pct}%`;
+              let progressColor = 'var(--brand)';
+
+              if (item.status === 'exceeded') {
+                badgeColor = 'var(--red)';
+                progressColor = 'var(--red)';
+                badgeText = `🚨 Excedido (${item.pct}%)`;
+              } else if (item.status === 'warning') {
+                badgeColor = 'var(--amber)';
+                progressColor = 'var(--amber)';
+                badgeText = `⚠️ 80%+ (${item.pct}%)`;
+              }
+
+              return `
+              <div class="budget-item-card ${item.status}">
+                <div class="budget-item-head">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size: 18px;">${getCatIcon(item.category)}</span>
+                    <strong>${item.category}</strong>
+                  </div>
+                  <span class="budget-status-pill" style="color: ${badgeColor}; background: ${badgeColor}15; border: 1px solid ${badgeColor}33;">
+                    ${badgeText}
+                  </span>
+                </div>
+
+                <div class="progress-bar" style="margin: 8px 0 6px;">
+                  <div class="progress-bar-inner" style="width: ${Math.min(100, item.pct)}%; background: ${progressColor};"></div>
+                </div>
+
+                <div class="budget-item-footer">
+                  <span>Gasto: <strong>${fmtBRL(item.spent)}</strong></span>
+                  <span>Meta: <strong>${fmtBRL(item.limit)}</strong></span>
+                </div>
+              </div>
+            `;
+            })
+            .join('')}
+        </div>
       </div>
 
       <!-- 2-Column Responsive Dashboard Grid (Uniform on iPhone & Desktop) -->
@@ -279,6 +353,16 @@ export function renderDashboard(container, user, onDataChanged) {
     </div>
   `;
 
+  // Bind Budget modal
+  const btnOpenBudget = container.querySelector('#btn-open-budget-modal');
+  if (btnOpenBudget) {
+    btnOpenBudget.addEventListener('click', () => {
+      openBudgetModal(userEmail, () => {
+        onDataChanged();
+      });
+    });
+  }
+
   // PWA banner installation & dismiss
   const pwaBanner = container.querySelector('#pwa-banner');
   if (pwaBanner) {
@@ -329,7 +413,7 @@ export function renderDashboard(container, user, onDataChanged) {
     rowVencimento.classList.toggle('hidden', !checkRecorrente.checked);
   });
 
-  // Add transaction submit with 3D Badge Unlock detection!
+  // Add transaction submit with 3D Badge Unlock & Budget Threshold Notification!
   const formAdd = container.querySelector('#form-add-tx');
   formAdd.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -354,6 +438,11 @@ export function renderDashboard(container, user, onDataChanged) {
         diaVencimento
       });
       showToast('Lançamento adicionado com sucesso!', 'success');
+
+      // Check Budget Alert for this category
+      if (tipo === 'gasto' && subcategoria) {
+        budgetService.checkBudgetAlert(userEmail, subcategoria);
+      }
 
       // Check for newly unlocked achievement
       const achAfter = gamification.calculateAchievements(userEmail).achievements;
