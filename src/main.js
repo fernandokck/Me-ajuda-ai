@@ -18,8 +18,10 @@ import { renderOnboarding } from './components/onboarding.js';
 import { renderBadgeReveal } from './components/badgeReveal.js';
 import { renderHeader } from './components/header.js';
 import { renderDashboard } from './components/dashboard.js';
+import { renderScoreView } from './components/score.js';
 import { renderAchievements } from './components/achievements.js';
 import { renderProfile } from './components/profile.js';
+import { renderBottomNav } from './components/bottomNav.js';
 
 class App {
   constructor() {
@@ -97,22 +99,8 @@ class App {
     this.root.innerHTML = `
       <div id="app-shell">
         <div id="header-container"></div>
-        
-        <!-- Navigation Tabs -->
-        <nav class="tabs-nav">
-          <button class="tab-btn ${this.currentTab === 'dash' ? 'active' : ''}" data-tab="dash">
-            📊 Painel Financeiro
-          </button>
-          <button class="tab-btn ${this.currentTab === 'ach' ? 'active' : ''}" data-tab="ach">
-            🏆 Conquistas & Metas
-          </button>
-          <button class="tab-btn ${this.currentTab === 'perfil' ? 'active' : ''}" data-tab="perfil">
-            👤 Meu Perfil
-          </button>
-        </nav>
-
-        <!-- Main Tab Content Container -->
         <main id="tab-content"></main>
+        <div id="dock-container"></div>
       </div>
     `;
 
@@ -123,35 +111,40 @@ class App {
       profile,
       isDark: this.isDark,
       onLogout: () => auth.logout(),
-      onThemeToggle: () => this.toggleTheme(user, profile)
+      onThemeToggle: () => this.toggleTheme(user, profile),
+      onProfileUpdated: (updatedProfile) => {
+        this.renderAppShell(user, updatedProfile);
+      }
     });
 
-    // Bind tab clicks
-    this.root.querySelectorAll('.tab-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        this.currentTab = btn.dataset.tab;
-        this.root.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.renderActiveTabContent(user);
-      });
+    // Render Bottom App Dock Navigation
+    const dockContainer = this.root.querySelector('#dock-container');
+    renderBottomNav(dockContainer, this.currentTab, (tabId) => {
+      this.currentTab = tabId;
+      this.renderActiveTabContent(user, profile);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    this.renderActiveTabContent(user);
+    this.renderActiveTabContent(user, profile);
   }
 
-  renderActiveTabContent(user) {
+  renderActiveTabContent(user, profile) {
     const content = this.root.querySelector('#tab-content');
     if (!content) return;
 
     if (this.currentTab === 'dash') {
       renderDashboard(content, user, () => {
-        this.renderActiveTabContent(user);
+        this.renderActiveTabContent(user, profile);
       });
+    } else if (this.currentTab === 'score') {
+      renderScoreView(content, user);
     } else if (this.currentTab === 'ach') {
       renderAchievements(content, user);
     } else if (this.currentTab === 'perfil') {
       renderProfile(content, user, () => {
         this.renderOnboardingScreen(user);
+      }, (up) => {
+        this.renderAppShell(user, up);
       });
     }
   }

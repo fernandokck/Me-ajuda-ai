@@ -1,21 +1,29 @@
 /**
- * Header Component
+ * Header Component with Clickable Avatar Profile Modal Trigger
  */
 
 import { pwa } from '../services/pwa.js';
 import { curMonthKey, monthLabel } from '../services/finance.js';
+import { openProfileModal } from './profileModal.js';
 
-export function renderHeader(container, { user, profile, onLogout, onThemeToggle, isDark }) {
+export function renderHeader(container, { user, profile, onLogout, onThemeToggle, isDark, onProfileUpdated }) {
   const initial = (profile?.nome || user?.name || user?.email || 'U')[0].toUpperCase();
   const userName = profile?.nome || user?.name || user?.email;
+  const avatarUrl = profile?.avatarUrl || user?.avatar || '';
   const currentMonthStr = monthLabel(curMonthKey());
 
   container.innerHTML = `
     <header class="top-header">
-      <div class="header-user">
-        <div class="avatar">${initial}</div>
+      <div class="header-user clickable-profile" id="btn-open-profile-header" title="Clique para ver e editar seu perfil e redes sociais">
+        <div class="avatar">
+          ${
+            avatarUrl
+              ? `<img src="${avatarUrl}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+              : initial
+          }
+        </div>
         <div class="header-user-info">
-          <h2>${userName}</h2>
+          <h2>${userName} <span class="profile-edit-indicator">✏️</span></h2>
           <span>Painel de ${currentMonthStr}</span>
         </div>
       </div>
@@ -33,6 +41,16 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
     </header>
   `;
 
+  // Bind avatar click to open profile modal
+  const btnOpenProfile = container.querySelector('#btn-open-profile-header');
+  if (btnOpenProfile) {
+    btnOpenProfile.addEventListener('click', () => {
+      openProfileModal(user, profile, (updatedProfile) => {
+        if (onProfileUpdated) onProfileUpdated(updatedProfile);
+      });
+    });
+  }
+
   // Bind actions
   const btnLogout = container.querySelector('#btn-logout');
   if (btnLogout) btnLogout.addEventListener('click', onLogout);
@@ -43,7 +61,7 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
   const btnPwa = container.querySelector('#btn-pwa-install');
   if (btnPwa) {
     pwa.onInstallAvailabilityChange((available) => {
-      if (available && !pwa.isStandalone()) {
+      if (available && !pwa.isStandalone() && !pwa.isDismissedOrInstalled()) {
         btnPwa.classList.remove('hidden');
       } else {
         btnPwa.classList.add('hidden');
