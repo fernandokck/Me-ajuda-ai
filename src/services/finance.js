@@ -55,13 +55,11 @@ export function monthKey(dateString) {
 }
 
 export function curMonthKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  return new Date().toISOString().slice(0, 7);
 }
 
 export function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function monthLabel(key) {
@@ -128,7 +126,7 @@ export const finance = {
           tipo: t.tipo,
           subcategoria: t.subcategoria || '',
           data: t.data,
-          desc: t.desc,
+          desc: t.descricao || t.desc || '',
           valor: Number(t.valor),
           recorrenteId: t.recorrente_id || null
         }));
@@ -147,7 +145,7 @@ export const finance = {
           id: r.id,
           tipo: r.tipo,
           subcategoria: r.subcategoria || '',
-          desc: r.desc,
+          desc: r.descricao || r.desc || '',
           valor: Number(r.valor),
           diaVencimento: Number(r.dia_vencimento),
           criadoEm: r.criado_em
@@ -221,11 +219,11 @@ export const finance = {
       this.setRecurring(userEmail, recList);
       this.generateRecurring(userEmail);
 
-      // Cloud sync insert
+      // Cloud sync insert with column 'descricao'
       if (isSupabaseConfigured && supabase) {
         supabase.from('recurring_rules').insert({
           tipo,
-          desc,
+          descricao: desc,
           valor: numericVal,
           subcategoria: subcategoria || '',
           dia_vencimento: venc,
@@ -244,13 +242,13 @@ export const finance = {
       txList.push(tx);
       this.setTransactions(userEmail, txList);
 
-      // Cloud sync insert
+      // Cloud sync insert with column 'descricao'
       if (isSupabaseConfigured && supabase) {
         supabase.from('transactions').insert({
           tipo,
           subcategoria: subcategoria || '',
           data,
-          desc,
+          descricao: desc,
           valor: numericVal
         }).then(() => {}).catch(() => {});
       }
