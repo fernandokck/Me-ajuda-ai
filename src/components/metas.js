@@ -1,6 +1,5 @@
 /**
- * Metas de Gastos View Component with Responsive Mobile Layout
- * and Interactive Custom Category Goal Addition
+ * Metas de Gastos View Component with Calibrated Single-Line Mobile Header
  */
 
 import { budgetService } from '../services/budget.js';
@@ -38,45 +37,49 @@ export function renderMetasView(container, user, onDataChanged) {
 
   container.innerHTML = `
     <div id="tab-metas" class="view-content-wrapper">
-      <!-- Metas Hero Summary Card (Calibrated for Mobile & Desktop) -->
-      <div class="card metas-hero-card" style="margin-bottom: 18px;">
-        <div class="metas-hero-header">
-          <div>
-            <span class="metas-hero-kicker">Controle Orçamentário</span>
-            <h2 class="metas-hero-title">🎯 Metas de Gastos do Mês</h2>
-          </div>
-          <button id="btn-add-meta-hero" class="btn btn-primary btn-sm metas-hero-btn">
+      <!-- Metas Hero Summary Card (Calibrated for Perfect Mobile Alignment) -->
+      <div class="card metas-hero-card" style="margin-bottom: 16px;">
+        <!-- Top Row with Kicker and Aligned Nova Meta Button -->
+        <div class="metas-hero-top-row">
+          <span class="metas-hero-kicker">CONTROLE ORÇAMENTÁRIO</span>
+          <button id="btn-add-meta-hero" class="btn btn-primary btn-xs metas-hero-btn">
             <span>➕</span> Nova Meta
           </button>
         </div>
 
+        <!-- Single-line Title -->
+        <h2 class="metas-hero-title">🎯 Metas de Gastos do Mês</h2>
+
+        <!-- Proportional Values Display -->
         <div class="metas-hero-numbers">
           <span class="metas-hero-spent" style="color: ${overallColor};">${fmtBRL(budgetData.totalSpent)}</span>
           <span class="metas-hero-limit">de ${fmtBRL(budgetData.totalLimit)} (${budgetData.totalPct}%)</span>
         </div>
 
-        <div class="progress-bar" style="height: 8px; margin: 10px 0 8px;">
+        <!-- Progress Bar -->
+        <div class="progress-bar" style="height: 6px; margin: 8px 0 6px;">
           <div class="progress-bar-inner" style="width: ${Math.min(100, budgetData.totalPct)}%; background: ${overallColor};"></div>
         </div>
 
+        <!-- Single-line Status Info -->
         <div class="metas-hero-status" style="color: ${overallColor};">
           ${budgetData.hasBudgets ? overallStatus : 'Nenhuma meta de categoria adicionada ainda.'}
         </div>
       </div>
 
       <!-- Categories Section -->
-      <div class="card" style="margin-bottom: 18px;">
+      <div class="card" style="margin-bottom: 16px;">
         <div class="card-title-row">
           <div>
-            <h3 style="font-size: 15px;">📋 Progresso por Categoria</h3>
-            <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+            <h3 style="font-size: 14.5px;">📋 Progresso por Categoria</h3>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">
               ${budgetData.categoryList.length} ${budgetData.categoryList.length === 1 ? 'meta ativa' : 'metas ativas'}
             </div>
           </div>
           ${
             budgetData.hasBudgets
               ? `
-            <button id="btn-add-meta-list" class="btn btn-secondary btn-sm">
+            <button id="btn-add-meta-list" class="btn btn-secondary btn-xs">
               <span>➕</span> Adicionar
             </button>
           `
@@ -90,13 +93,13 @@ export function renderMetasView(container, user, onDataChanged) {
           <!-- Empty State CTA Box -->
           <div class="metas-empty-box">
             <div class="metas-empty-icon">🎯</div>
-            <h4 style="font-size: 15px; font-weight: 800; margin: 8px 0 4px; color: var(--text-main);">
+            <h4 style="font-size: 14.5px; font-weight: 800; margin: 6px 0 4px; color: var(--text-main);">
               Adicione seu progresso para sua gestão financeira
             </h4>
-            <p style="font-size: 12.5px; color: var(--text-muted); max-width: 380px; margin: 0 auto 16px; line-height: 1.4;">
+            <p style="font-size: 12px; color: var(--text-muted); max-width: 360px; margin: 0 auto 14px; line-height: 1.4;">
               Defina limites de gastos para categorias como Lazer, Comida e Transporte para acompanhar em tempo real e receber alertas antes de estourar.
             </p>
-            <button id="btn-add-meta-empty" class="btn btn-primary" style="padding: 11px 22px; font-size: 14px;">
+            <button id="btn-add-meta-empty" class="btn btn-primary" style="padding: 9px 18px; font-size: 13px;">
               <span>➕</span> Adicionar Meta de Gasto
             </button>
           </div>
@@ -135,7 +138,7 @@ export function renderMetasView(container, user, onDataChanged) {
                     </div>
                   </div>
 
-                  <div class="progress-bar" style="margin: 8px 0 6px; height: 7px;">
+                  <div class="progress-bar" style="margin: 8px 0 6px; height: 6px;">
                     <div class="progress-bar-inner" style="width: ${Math.min(100, item.pct)}%; background: ${progressColor};"></div>
                   </div>
 
@@ -163,9 +166,9 @@ export function renderMetasView(container, user, onDataChanged) {
       <!-- Tips Card -->
       <div class="card">
         <div class="card-title-row">
-          <h3 style="font-size: 14.5px;">💡 Dica de Gestão Financeira</h3>
+          <h3 style="font-size: 14px;">💡 Dica de Gestão Financeira</h3>
         </div>
-        <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5;">
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
           Definir metas por categoria ajuda seu cérebro a criar limites claros. Ao registrar uma despesa, se você estiver próximo de 80%, o app te avisará na hora para poupar o restante!
         </div>
       </div>
