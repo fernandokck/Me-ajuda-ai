@@ -30,15 +30,20 @@ class App {
     this.init();
   }
 
-  init() {
+  async init() {
     this.applyTheme();
     pwa.init();
-    auth.init();
 
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(async (user) => {
       if (!user) {
         this.renderLoginScreen();
       } else {
+        // Sync with cloud if Supabase is active
+        await Promise.all([
+          finance.syncWithCloud(user),
+          gamification.syncProfileFromCloud(user)
+        ]);
+
         finance.generateRecurring(user.email);
         const profile = gamification.getProfile(user.email);
         if (!profile) {
@@ -48,6 +53,8 @@ class App {
         }
       }
     });
+
+    await auth.init();
   }
 
   applyTheme() {
@@ -64,7 +71,11 @@ class App {
   }
 
   renderLoginScreen() {
-    renderLogin(this.root, (user) => {
+    renderLogin(this.root, async (user) => {
+      await Promise.all([
+        finance.syncWithCloud(user),
+        gamification.syncProfileFromCloud(user)
+      ]);
       const profile = gamification.getProfile(user.email);
       if (!profile) {
         this.renderOnboardingScreen(user);

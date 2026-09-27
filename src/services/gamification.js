@@ -1,10 +1,12 @@
 /**
  * Gamification Service
  * Handles badge assessment, onboarding profiles, and 14 financial achievements
+ * with Supabase profile sync.
  */
 
 import { storage } from './storage.js';
 import { finance, curMonthKey, monthKey, fmtBRL } from './finance.js';
+import { supabase, isSupabaseConfigured } from './supabase.js';
 
 export const QUESTIONS = [
   {
@@ -132,7 +134,37 @@ export const gamification = {
     return storage.get(`perfil_${userEmail}`, null);
   },
 
-  saveProfile(userEmail, answers) {
+  async syncProfileFromCloud(user) {
+    if (!isSupabaseConfigured || !supabase || !user?.id) return null;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (!error && data) {
+        const profile = {
+          nome: data.nome,
+          faixa: data.faixa,
+          sobra: data.sobra,
+          dificuldade: data.dificuldade,
+          meta: data.meta,
+          sabeParaOnde: data.sabe_para_onde,
+          sabeInvestir: data.sabe_investir,
+          badge: data.badge,
+          dataCadastro: data.updated_at ? data.updated_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
+        };
+        storage.set(`perfil_${user.email}`, profile);
+        return profile;
+      }
+    } catch (e) {
+      console.warn('Profile sync error:', e);
+    }
+    return null;
+  },
+
+  saveProfile(userEmail, answers, userId = null) {
     const profile = {
       nome: answers.nome || userEmail.split('@')[0],
       faixa: answers.faixa || '',
@@ -145,6 +177,23 @@ export const gamification = {
     };
     profile.badge = computeBadge(profile);
     storage.set(`perfil_${userEmail}`, profile);
+
+    // Sync profile to Supabase
+    if (isSupabaseConfigured && supabase && userId) {
+      supabase.from('profiles').upsert({
+        id: userId,
+        nome: profile.nome,
+        faixa: profile.faixa,
+        sobra: profile.sobra,
+        dificuldade: profile.dificuldade,
+        meta: profile.meta,
+        sabe_para_onde: profile.sabeParaOnde,
+        sabe_investir: profile.sabeInvestir,
+        badge: profile.badge,
+        updated_at: new Date().toISOString()
+      }).then(() => {}).catch(() => {});
+    }
+
     return profile;
   },
 

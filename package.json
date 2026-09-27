@@ -9,8 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "chart.js": "^4.4.4",
-    "canvas-confetti": "^1.9.4"
+    "@supabase/supabase-js": "^2.109.0",
+    "canvas-confetti": "^1.9.4",
+    "chart.js": "^4.4.4"
   },
   "devDependencies": {
     "vite": "^5.4.8"

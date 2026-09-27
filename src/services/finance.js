@@ -1,9 +1,11 @@
 /**
  * Finance Service
- * Core business logic, calculations, date helpers, and recurring rule engine.
+ * Core business logic, calculations, date helpers, recurring rule engine,
+ * with real-time Supabase cloud synchronization.
  */
 
 import { storage } from './storage.js';
+import { supabase, isSupabaseConfigured } from './supabase.js';
 
 export const CATEGORIES = {
   gasto: [
@@ -111,6 +113,54 @@ export const finance = {
     storage.set(`rec_${userEmail}`, list);
   },
 
+  async syncWithCloud(user) {
+    if (!isSupabaseConfigured || !supabase || !user?.id) return;
+    try {
+      // Sync Transactions from Supabase
+      const { data: cloudTx, error: errTx } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('data', { ascending: false });
+
+      if (!errTx && cloudTx) {
+        const mapped = cloudTx.map((t) => ({
+          id: t.id,
+          tipo: t.tipo,
+          subcategoria: t.subcategoria || '',
+          data: t.data,
+          desc: t.desc,
+          valor: Number(t.valor),
+          recorrenteId: t.recorrente_id || null
+        }));
+        if (mapped.length > 0) {
+          this.setTransactions(user.email, mapped);
+        }
+      }
+
+      // Sync Recurring Rules
+      const { data: cloudRec, error: errRec } = await supabase
+        .from('recurring_rules')
+        .select('*');
+
+      if (!errRec && cloudRec) {
+        const mappedRec = cloudRec.map((r) => ({
+          id: r.id,
+          tipo: r.tipo,
+          subcategoria: r.subcategoria || '',
+          desc: r.desc,
+          valor: Number(r.valor),
+          diaVencimento: Number(r.dia_vencimento),
+          criadoEm: r.criado_em
+        }));
+        if (mappedRec.length > 0) {
+          this.setRecurring(user.email, mappedRec);
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud sync error:', e);
+    }
+  },
+
   generateRecurring(userEmail) {
     const cur = curMonthKey();
     const recorrentes = this.getRecurring(userEmail);
@@ -143,11 +193,14 @@ export const finance = {
     return transacoes;
   },
 
-  addTransaction(userEmail, { tipo, data, desc, valor, subcategoria, recorrente, diaVencimento }) {
+  async addTransaction(userEmail, { tipo, data, desc, valor, subcategoria, recorrente, diaVencimento }) {
     const numericVal = parseFloat(valor);
     if (!data || !desc || isNaN(numericVal) || numericVal <= 0) {
       throw new Error('Preencha os campos obrigatórios corretamente.');
     }
+
+    const txList = this.getTransactions(userEmail);
+    const newTxId = Date.now();
 
     if (recorrente) {
       const venc = parseInt(diaVencimento, 10);
@@ -156,7 +209,7 @@ export const finance = {
       }
       const recList = this.getRecurring(userEmail);
       const rule = {
-        id: Date.now(),
+        id: newTxId,
         tipo,
         desc,
         valor: numericVal,
@@ -167,29 +220,60 @@ export const finance = {
       recList.push(rule);
       this.setRecurring(userEmail, recList);
       this.generateRecurring(userEmail);
+
+      // Cloud sync insert
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('recurring_rules').insert({
+          tipo,
+          desc,
+          valor: numericVal,
+          subcategoria: subcategoria || '',
+          dia_vencimento: venc,
+          criado_em: curMonthKey()
+        }).then(() => {}).catch(() => {});
+      }
     } else {
-      const txList = this.getTransactions(userEmail);
-      txList.push({
-        id: Date.now(),
+      const tx = {
+        id: newTxId,
         tipo,
         subcategoria: subcategoria || '',
         data,
         desc,
         valor: numericVal
-      });
+      };
+      txList.push(tx);
       this.setTransactions(userEmail, txList);
+
+      // Cloud sync insert
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('transactions').insert({
+          tipo,
+          subcategoria: subcategoria || '',
+          data,
+          desc,
+          valor: numericVal
+        }).then(() => {}).catch(() => {});
+      }
     }
   },
 
-  deleteTransaction(userEmail, id) {
+  async deleteTransaction(userEmail, id) {
     const list = this.getTransactions(userEmail).filter((t) => t.id !== id);
     this.setTransactions(userEmail, list);
+
+    if (isSupabaseConfigured && supabase && typeof id === 'string') {
+      supabase.from('transactions').delete().eq('id', id).then(() => {}).catch(() => {});
+    }
     return list;
   },
 
-  deleteRecurring(userEmail, id) {
+  async deleteRecurring(userEmail, id) {
     const list = this.getRecurring(userEmail).filter((r) => r.id !== id);
     this.setRecurring(userEmail, list);
+
+    if (isSupabaseConfigured && supabase && typeof id === 'string') {
+      supabase.from('recurring_rules').delete().eq('id', id).then(() => {}).catch(() => {});
+    }
     return list;
   },
 
