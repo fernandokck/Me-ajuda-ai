@@ -1,70 +1,69 @@
 /**
- * Budget Goals Configuration Modal
+ * Budget Category Add / Edit Modal
  */
 
-import { budgetService, DEFAULT_BUDGETS } from '../services/budget.js';
+import { budgetService } from '../services/budget.js';
 import { CATEGORIES, fmtBRL } from '../services/finance.js';
 import { showToast } from './toast.js';
 
-export function openBudgetModal(userEmail, onSaved) {
-  const existing = document.getElementById('budget-edit-modal');
+export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
+  const existing = document.getElementById('budget-add-modal');
   if (existing) existing.remove();
 
   const currentBudgets = budgetService.getBudgets(userEmail);
   const categories = CATEGORIES.gasto;
+  const initialCategory = defaultCategory || categories[0];
+  const initialLimit = currentBudgets[initialCategory] || '';
 
   const modal = document.createElement('div');
-  modal.id = 'budget-edit-modal';
+  modal.id = 'budget-add-modal';
   modal.className = 'badge-modal-backdrop';
 
   modal.innerHTML = `
-    <div class="profile-modal-card">
+    <div class="profile-modal-card" style="max-width: 400px; padding: 24px 20px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <div>
-          <h3 style="font-size: 18px; font-weight: 800; margin: 0;">🎯 Definir Metas de Gastos</h3>
-          <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">Estabeleça o teto máximo de gastos mensais por categoria.</p>
-        </div>
-        <button class="badge-modal-close" id="btn-close-budget" style="position: static;">✕</button>
+        <h3 style="font-size: 17px; font-weight: 800; margin: 0;">🎯 Definir Meta de Gasto</h3>
+        <button class="badge-modal-close" id="btn-close-bm" style="position: static;">✕</button>
       </div>
 
-      <div class="budget-notification-banner">
-        <span style="font-size: 20px;">🔔</span>
-        <div style="flex: 1; font-size: 12px; color: var(--text-main); line-height: 1.4;">
-          <strong>Alertas Inteligentes:</strong> O app te avisará automaticamente no celular quando seus gastos atingirem <strong>80%</strong> ou ultrapassarem a meta.
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+        Escolha a categoria e o teto máximo que deseja gastar neste mês para receber alertas automáticos.
+      </p>
+
+      <form id="form-add-single-budget">
+        <div class="field">
+          <label for="bm-select-cat">Categoria</label>
+          <select id="bm-select-cat" class="input">
+            ${categories
+              .map(
+                (c) => `
+              <option value="${c}" ${c === initialCategory ? 'selected' : ''}>
+                ${getCategoryIcon(c)} ${c} ${currentBudgets[c] ? `(Atual: ${fmtBRL(currentBudgets[c])})` : ''}
+              </option>
+            `
+              )
+              .join('')}
+          </select>
         </div>
-      </div>
 
-      <form id="form-edit-budgets" style="display: flex; flex-direction: column; gap: 12px;">
-        ${categories
-          .map((cat) => {
-            const currentVal = currentBudgets[cat] !== undefined ? currentBudgets[cat] : (DEFAULT_BUDGETS[cat] || 200);
-            return `
-            <div class="budget-input-group">
-              <label for="budget-${cat}">
-                <span>${getCategoryIcon(cat)}</span>
-                <strong>${cat}</strong>
-              </label>
-              <div class="budget-input-wrapper">
-                <span class="currency-prefix">R$</span>
-                <input 
-                  id="budget-${cat}" 
-                  type="number" 
-                  step="10" 
-                  min="0" 
-                  class="input budget-field" 
-                  data-cat="${cat}" 
-                  value="${currentVal}" 
-                  placeholder="0,00"
-                >
-              </div>
-            </div>
-          `;
-          })
-          .join('')}
+        <div class="field">
+          <label for="bm-input-limit">Meta de Gasto Mensal (R$)</label>
+          <input 
+            id="bm-input-limit" 
+            type="number" 
+            step="10" 
+            min="1" 
+            class="input" 
+            placeholder="Ex: 300,00" 
+            value="${initialLimit}" 
+            required 
+            autofocus
+          >
+        </div>
 
-        <div style="display: flex; gap: 12px; margin-top: 20px;">
-          <button type="button" class="btn btn-secondary" id="btn-cancel-budget" style="flex: 1;">Cancelar</button>
-          <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Metas 🎯</button>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-bm" style="flex: 1;">Cancelar</button>
+          <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Meta</button>
         </div>
       </form>
     </div>
@@ -72,25 +71,35 @@ export function openBudgetModal(userEmail, onSaved) {
 
   document.body.appendChild(modal);
 
-  // Ask for notification permission if not yet requested
+  // Ask for notification permission if not yet granted
   budgetService.requestNotificationPermission();
 
+  const selectCat = modal.querySelector('#bm-select-cat');
+  const inputLimit = modal.querySelector('#bm-input-limit');
+
+  selectCat.addEventListener('change', () => {
+    const selected = selectCat.value;
+    inputLimit.value = currentBudgets[selected] || '';
+  });
+
   const closeModal = () => modal.remove();
-  modal.querySelector('#btn-close-budget').addEventListener('click', closeModal);
-  modal.querySelector('#btn-cancel-budget').addEventListener('click', closeModal);
+  modal.querySelector('#btn-close-bm').addEventListener('click', closeModal);
+  modal.querySelector('#btn-cancel-bm').addEventListener('click', closeModal);
 
   // Form Submit
-  const form = modal.querySelector('#form-edit-budgets');
+  const form = modal.querySelector('#form-add-single-budget');
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const newBudgets = {};
-    modal.querySelectorAll('.budget-field').forEach((input) => {
-      const cat = input.dataset.cat;
-      newBudgets[cat] = Math.max(0, parseFloat(input.value) || 0);
-    });
+    const category = selectCat.value;
+    const limit = parseFloat(inputLimit.value);
 
-    budgetService.saveBudgets(userEmail, newBudgets);
-    showToast('Metas de gastos salvas com sucesso!', 'success');
+    if (isNaN(limit) || limit <= 0) {
+      showToast('Informe um valor de meta válido.', 'error');
+      return;
+    }
+
+    budgetService.setCategoryBudget(userEmail, category, limit);
+    showToast(`Meta de ${category} definida para ${fmtBRL(limit)}!`, 'success');
     closeModal();
     if (onSaved) onSaved();
   });

@@ -1,30 +1,33 @@
 /**
  * Budget Goals Service (Metas de Gastos por Categoria)
- * Manages category limits, monthly calculations, and browser/in-app threshold notifications.
  */
 
 import { storage } from './storage.js';
 import { finance, curMonthKey, monthKey, CATEGORIES, fmtBRL } from './finance.js';
 import { showToast } from '../components/toast.js';
 
-export const DEFAULT_BUDGETS = {
-  'Alimentação': 500,
-  'Lazer': 300,
-  'Transporte': 250,
-  'Lanches/Besteiras': 150,
-  'Moradia': 1200,
-  'Saúde': 200,
-  'Educação': 300,
-  'Outros': 200
-};
-
 export const budgetService = {
   getBudgets(userEmail) {
-    return storage.get(`budgets_${userEmail}`, DEFAULT_BUDGETS);
+    // Defaults to empty object if not configured yet, so user can build their custom goals
+    return storage.get(`budgets_${userEmail}`, {});
   },
 
   saveBudgets(userEmail, budgets) {
     storage.set(`budgets_${userEmail}`, budgets);
+    return budgets;
+  },
+
+  setCategoryBudget(userEmail, category, limit) {
+    const budgets = this.getBudgets(userEmail);
+    budgets[category] = Number(limit);
+    this.saveBudgets(userEmail, budgets);
+    return budgets;
+  },
+
+  removeCategoryBudget(userEmail, category) {
+    const budgets = this.getBudgets(userEmail);
+    delete budgets[category];
+    this.saveBudgets(userEmail, budgets);
     return budgets;
   },
 
@@ -39,7 +42,9 @@ export const budgetService = {
       spentByCategory[cat] = (spentByCategory[cat] || 0) + Number(t.valor);
     });
 
-    const categoryList = Object.keys(budgets).map((category) => {
+    const activeCategories = Object.keys(budgets);
+
+    const categoryList = activeCategories.map((category) => {
       const limit = Number(budgets[category]) || 0;
       const spent = spentByCategory[category] || 0;
       const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
@@ -58,13 +63,13 @@ export const budgetService = {
       };
     });
 
-    // Total budget summary
-    const totalLimit = Object.values(budgets).reduce((a, b) => a + Number(b), 0);
-    const totalSpent = Object.values(spentByCategory).reduce((a, b) => a + Number(b), 0);
+    const totalLimit = activeCategories.reduce((acc, cat) => acc + Number(budgets[cat]), 0);
+    const totalSpent = activeCategories.reduce((acc, cat) => acc + (spentByCategory[cat] || 0), 0);
     const totalPct = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
 
     return {
       categoryList,
+      hasBudgets: activeCategories.length > 0,
       totalLimit,
       totalSpent,
       totalPct
@@ -80,10 +85,8 @@ export const budgetService = {
   },
 
   triggerNotification(title, body) {
-    // In-App floating toast
     showToast(`${title} - ${body}`, 'error');
 
-    // Browser / Mobile Native Push Notification (if granted)
     if ('Notification' in window && Notification.permission === 'granted') {
       try {
         navigator.serviceWorker.ready.then((registration) => {
