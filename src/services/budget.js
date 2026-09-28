@@ -4,30 +4,42 @@
 
 import { storage } from './storage.js';
 import { finance, curMonthKey, monthKey, CATEGORIES, fmtBRL } from './finance.js';
+import { supabase, isSupabaseConfigured } from './supabase.js';
 import { showToast } from '../components/toast.js';
 
 export const budgetService = {
   getBudgets(userEmail) {
-    // Defaults to empty object if not configured yet, so user can build their custom goals
-    return storage.get(`budgets_${userEmail}`, {});
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    return storage.get(`budgets_${cleanEmail}`, {});
   },
 
   saveBudgets(userEmail, budgets) {
-    storage.set(`budgets_${userEmail}`, budgets);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    storage.set(`budgets_${cleanEmail}`, budgets);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('profiles').update({
+        budgets: budgets,
+        updated_at: new Date().toISOString()
+      }).eq('user_email', cleanEmail).then(() => {}).catch(() => {});
+    }
+
     return budgets;
   },
 
   setCategoryBudget(userEmail, category, limit) {
-    const budgets = this.getBudgets(userEmail);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const budgets = this.getBudgets(cleanEmail);
     budgets[category] = Number(limit);
-    this.saveBudgets(userEmail, budgets);
+    this.saveBudgets(cleanEmail, budgets);
     return budgets;
   },
 
   removeCategoryBudget(userEmail, category) {
-    const budgets = this.getBudgets(userEmail);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const budgets = this.getBudgets(cleanEmail);
     delete budgets[category];
-    this.saveBudgets(userEmail, budgets);
+    this.saveBudgets(cleanEmail, budgets);
     return budgets;
   },
 

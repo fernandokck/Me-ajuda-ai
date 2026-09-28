@@ -171,73 +171,146 @@ export const finance = {
   },
 
   async syncWithCloud(user) {
-    if (!isSupabaseConfigured || !supabase || !user?.id) return;
+    if (!isSupabaseConfigured || !supabase || !user?.email) return;
+    const cleanEmail = (user.email || '').trim().toLowerCase();
     try {
-      // Sync Transactions from Supabase
+      console.log(`[Finance Sync] Sincronizando dados na nuvem para ${cleanEmail}...`);
+
+      // 1. Sync Transactions from Supabase for this user
       const { data: cloudTx, error: errTx } = await supabase
         .from('transactions')
         .select('*')
+        .eq('user_email', cleanEmail)
         .order('data', { ascending: false });
 
+      if (errTx) {
+        console.warn('[Finance Sync] Erro ao buscar transações na nuvem:', errTx);
+      }
+
+      const localTx = this.getTransactions(cleanEmail);
+
       if (!errTx && cloudTx) {
-        const mapped = cloudTx.map((t) => ({
-          id: t.id,
+        const cloudMapped = cloudTx.map((t) => ({
+          id: String(t.id),
           tipo: t.tipo,
           subcategoria: t.subcategoria || '',
           data: t.data,
           desc: t.descricao || t.desc || '',
           valor: Number(t.valor),
-          recorrenteId: t.recorrente_id || null
+          moeda: t.moeda || 'BRL',
+          recorrenteId: t.recorrente_id ? String(t.recorrente_id) : null
         }));
-        if (mapped.length > 0) {
-          this.setTransactions(user.email, mapped);
+
+        // Check local transactions that are not in the cloud
+        const cloudIds = new Set(cloudMapped.map((c) => String(c.id)));
+        const cloudSignatures = new Set(cloudMapped.map((c) => `${c.data}_${c.desc}_${c.valor}_${c.tipo}`));
+
+        const localOnly = localTx.filter((lt) => {
+          const sig = `${lt.data}_${lt.desc}_${lt.valor}_${lt.tipo}`;
+          return !cloudIds.has(String(lt.id)) && !cloudSignatures.has(sig);
+        });
+
+        // Push local-only transactions to Supabase
+        if (localOnly.length > 0) {
+          console.log(`[Finance Sync] Enviando ${localOnly.length} transações locais para a nuvem...`);
+          for (const item of localOnly) {
+            await supabase.from('transactions').insert({
+              id: String(item.id),
+              tipo: item.tipo,
+              subcategoria: item.subcategoria || '',
+              data: item.data,
+              descricao: item.desc,
+              valor: item.valor,
+              moeda: item.moeda || 'BRL',
+              recorrente_id: item.recorrenteId ? String(item.recorrenteId) : null,
+              user_email: cleanEmail
+            }).then(() => {}).catch((e) => console.warn('[Finance Sync Insert]', e));
+          }
         }
+
+        const mergedTx = [...cloudMapped, ...localOnly];
+        this.setTransactions(cleanEmail, mergedTx);
       }
 
-      // Sync Recurring Rules
+      // 2. Sync Recurring Rules
       const { data: cloudRec, error: errRec } = await supabase
         .from('recurring_rules')
-        .select('*');
+        .select('*')
+        .eq('user_email', cleanEmail);
+
+      if (errRec) {
+        console.warn('[Finance Sync] Erro ao buscar recorrentes na nuvem:', errRec);
+      }
+
+      const localRec = this.getRecurring(cleanEmail);
 
       if (!errRec && cloudRec) {
         const mappedRec = cloudRec.map((r) => ({
-          id: r.id,
+          id: String(r.id),
           tipo: r.tipo,
           subcategoria: r.subcategoria || '',
           desc: r.descricao || r.desc || '',
           valor: Number(r.valor),
+          moeda: r.moeda || 'BRL',
           diaVencimento: Number(r.dia_vencimento),
           criadoEm: r.criado_em
         }));
-        if (mappedRec.length > 0) {
-          this.setRecurring(user.email, mappedRec);
+
+        const cloudRecIds = new Set(mappedRec.map((c) => String(c.id)));
+        const cloudRecSigs = new Set(mappedRec.map((c) => `${c.desc}_${c.valor}_${c.diaVencimento}`));
+
+        const localRecOnly = localRec.filter((lr) => {
+          const sig = `${lr.desc}_${lr.valor}_${lr.diaVencimento}`;
+          return !cloudRecIds.has(String(lr.id)) && !cloudRecSigs.has(sig);
+        });
+
+        if (localRecOnly.length > 0) {
+          console.log(`[Finance Sync] Enviando ${localRecOnly.length} regras recorrentes locais para a nuvem...`);
+          for (const item of localRecOnly) {
+            await supabase.from('recurring_rules').insert({
+              id: String(item.id),
+              tipo: item.tipo,
+              descricao: item.desc,
+              valor: item.valor,
+              moeda: item.moeda || 'BRL',
+              subcategoria: item.subcategoria || '',
+              dia_vencimento: item.diaVencimento,
+              criado_em: item.criadoEm || curMonthKey(),
+              user_email: cleanEmail
+            }).then(() => {}).catch((e) => console.warn('[Finance Sync Rec Insert]', e));
+          }
         }
+
+        const mergedRec = [...mappedRec, ...localRecOnly];
+        this.setRecurring(cleanEmail, mergedRec);
       }
     } catch (e) {
-      console.warn('Cloud sync error:', e);
+      console.warn('[Finance Sync] Exceção de sincronização:', e);
     }
   },
 
   generateRecurring(userEmail) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     const cur = curMonthKey();
-    const recorrentes = this.getRecurring(userEmail);
-    let transacoes = this.getTransactions(userEmail);
+    const recorrentes = this.getRecurring(cleanEmail);
+    let transacoes = this.getTransactions(cleanEmail);
     let updated = false;
 
     recorrentes.forEach((r) => {
       monthsBetween(r.criadoEm, cur).forEach((ym) => {
         const exists = transacoes.some(
-          (t) => t.recorrenteId === r.id && monthKey(t.data) === ym
+          (t) => String(t.recorrenteId) === String(r.id) && monthKey(t.data) === ym
         );
         if (!exists) {
           transacoes.push({
-            id: Date.now() + Math.random(),
+            id: String(Date.now() + Math.random()),
             tipo: r.tipo,
             subcategoria: r.subcategoria || '',
             data: occurrenceDate(ym, r.diaVencimento),
             desc: `${r.desc} (recorrente)`,
             valor: Number(r.valor),
-            recorrenteId: r.id
+            moeda: r.moeda || 'BRL',
+            recorrenteId: String(r.id)
           });
           updated = true;
         }
@@ -245,12 +318,13 @@ export const finance = {
     });
 
     if (updated) {
-      this.setTransactions(userEmail, transacoes);
+      this.setTransactions(cleanEmail, transacoes);
     }
     return transacoes;
   },
 
   async addTransaction(userEmail, { tipo, data, desc, valor, subcategoria, recorrente, diaVencimento, moeda = 'BRL' }) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     let numericVal = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
     if (isNaN(numericVal)) numericVal = parseFloat(valor);
 
@@ -258,19 +332,19 @@ export const finance = {
       throw new Error('Preencha os campos obrigatórios com um valor válido maior que zero.');
     }
 
-    const txList = this.getTransactions(userEmail);
-    const newTxId = Date.now();
+    const txList = this.getTransactions(cleanEmail);
+    const newTxId = String(Date.now());
 
     if (recorrente) {
       const venc = parseInt(diaVencimento, 10);
       if (!venc || venc < 1 || venc > 31) {
         throw new Error('Informe um dia de vencimento válido (1 a 31).');
       }
-      const recList = this.getRecurring(userEmail);
+      const recList = this.getRecurring(cleanEmail);
       const rule = {
         id: newTxId,
         tipo,
-        desc,
+        desc: desc.trim(),
         valor: numericVal,
         moeda: moeda || 'BRL',
         subcategoria: subcategoria || '',
@@ -278,21 +352,24 @@ export const finance = {
         criadoEm: curMonthKey()
       };
       recList.push(rule);
-      this.setRecurring(userEmail, recList);
-      this.generateRecurring(userEmail);
+      this.setRecurring(cleanEmail, recList);
+      this.generateRecurring(cleanEmail);
 
-      // Cloud sync insert with column 'descricao'
+      // Cloud sync insert
       if (isSupabaseConfigured && supabase) {
         supabase.from('recurring_rules').insert({
+          id: newTxId,
           tipo,
-          descricao: desc,
+          descricao: desc.trim(),
           valor: numericVal,
           moeda: moeda || 'BRL',
           subcategoria: subcategoria || '',
           dia_vencimento: venc,
           criado_em: curMonthKey(),
-          user_email: userEmail
-        }).then(() => {}).catch(() => {});
+          user_email: cleanEmail
+        }).then(({ error }) => {
+          if (error) console.warn('[Recurring Insert] Erro Supabase:', error);
+        }).catch((e) => console.warn('[Recurring Insert] Exceção:', e));
       }
     } else {
       const tx = {
@@ -301,28 +378,32 @@ export const finance = {
         moeda: moeda || 'BRL',
         subcategoria: subcategoria || '',
         data,
-        desc,
+        desc: desc.trim(),
         valor: numericVal
       };
       txList.push(tx);
-      this.setTransactions(userEmail, txList);
+      this.setTransactions(cleanEmail, txList);
 
-      // Cloud sync insert with column 'descricao'
+      // Cloud sync insert
       if (isSupabaseConfigured && supabase) {
         supabase.from('transactions').insert({
+          id: newTxId,
           tipo,
           subcategoria: subcategoria || '',
           data,
-          descricao: desc,
+          descricao: desc.trim(),
           valor: numericVal,
           moeda: moeda || 'BRL',
-          user_email: userEmail
-        }).then(() => {}).catch(() => {});
+          user_email: cleanEmail
+        }).then(({ error }) => {
+          if (error) console.warn('[Transaction Insert] Erro Supabase:', error);
+        }).catch((e) => console.warn('[Transaction Insert] Exceção:', e));
       }
     }
   },
 
   async updateTransaction(userEmail, id, { tipo, data, desc, valor, subcategoria, moeda = 'BRL' }) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     let numericVal = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
     if (isNaN(numericVal)) numericVal = parseFloat(valor);
 
@@ -330,9 +411,10 @@ export const finance = {
       throw new Error('Preencha os campos obrigatórios com um valor válido maior que zero.');
     }
 
-    const list = this.getTransactions(userEmail);
+    const list = this.getTransactions(cleanEmail);
+    const strId = String(id);
     const numericId = isNaN(id) ? id : Number(id);
-    const idx = list.findIndex((t) => t.id === id || t.id === numericId);
+    const idx = list.findIndex((t) => String(t.id) === strId || t.id === numericId);
     if (idx === -1) throw new Error('Lançamento não encontrado.');
 
     list[idx] = {
@@ -345,7 +427,7 @@ export const finance = {
       moeda: moeda || 'BRL'
     };
 
-    this.setTransactions(userEmail, list);
+    this.setTransactions(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
       supabase.from('transactions').update({
@@ -355,24 +437,31 @@ export const finance = {
         descricao: desc.trim(),
         valor: numericVal,
         moeda: moeda || 'BRL'
-      }).eq('id', id).then(() => {}).catch(() => {});
+      }).eq('id', strId).eq('user_email', cleanEmail).then(({ error }) => {
+        if (error) console.warn('[Transaction Update] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Transaction Update] Exceção:', e));
     }
 
     return list[idx];
   },
 
   async deleteTransaction(userEmail, id) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const strId = String(id);
     const numericId = isNaN(id) ? id : Number(id);
-    const list = this.getTransactions(userEmail).filter((t) => t.id !== id && t.id !== numericId);
-    this.setTransactions(userEmail, list);
+    const list = this.getTransactions(cleanEmail).filter((t) => String(t.id) !== strId && t.id !== numericId);
+    this.setTransactions(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('transactions').delete().eq('id', id).then(() => {}).catch(() => {});
+      supabase.from('transactions').delete().eq('id', strId).eq('user_email', cleanEmail).then(({ error }) => {
+        if (error) console.warn('[Transaction Delete] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Transaction Delete] Exceção:', e));
     }
     return list;
   },
 
   async updateRecurring(userEmail, id, { tipo, desc, valor, subcategoria, diaVencimento, moeda = 'BRL' }) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     let numericVal = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
     if (isNaN(numericVal)) numericVal = parseFloat(valor);
 
@@ -381,9 +470,10 @@ export const finance = {
       throw new Error('Preencha os campos da regra recorrente corretamente.');
     }
 
-    const list = this.getRecurring(userEmail);
+    const list = this.getRecurring(cleanEmail);
+    const strId = String(id);
     const numericId = isNaN(id) ? id : Number(id);
-    const idx = list.findIndex((r) => r.id === id || r.id === numericId);
+    const idx = list.findIndex((r) => String(r.id) === strId || r.id === numericId);
     if (idx === -1) throw new Error('Regra recorrente não encontrada.');
 
     list[idx] = {
@@ -396,7 +486,7 @@ export const finance = {
       moeda: moeda || 'BRL'
     };
 
-    this.setRecurring(userEmail, list);
+    this.setRecurring(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
       supabase.from('recurring_rules').update({
@@ -406,19 +496,25 @@ export const finance = {
         subcategoria: subcategoria || '',
         dia_vencimento: venc,
         moeda: moeda || 'BRL'
-      }).eq('id', id).then(() => {}).catch(() => {});
+      }).eq('id', strId).eq('user_email', cleanEmail).then(({ error }) => {
+        if (error) console.warn('[Recurring Update] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Recurring Update] Exceção:', e));
     }
 
     return list[idx];
   },
 
   async deleteRecurring(userEmail, id) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const strId = String(id);
     const numericId = isNaN(id) ? id : Number(id);
-    const list = this.getRecurring(userEmail).filter((r) => r.id !== id && r.id !== numericId);
-    this.setRecurring(userEmail, list);
+    const list = this.getRecurring(cleanEmail).filter((r) => String(r.id) !== strId && r.id !== numericId);
+    this.setRecurring(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('recurring_rules').delete().eq('id', id).then(() => {}).catch(() => {});
+      supabase.from('recurring_rules').delete().eq('id', strId).eq('user_email', cleanEmail).then(({ error }) => {
+        if (error) console.warn('[Recurring Delete] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Recurring Delete] Exceção:', e));
     }
     return list;
   },

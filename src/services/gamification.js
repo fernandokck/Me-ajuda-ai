@@ -131,42 +131,71 @@ export function computeLevelInfo(unlockedCount, total) {
 
 export const gamification = {
   getProfile(userEmail) {
-    return storage.get(`perfil_${userEmail}`, null);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    return storage.get(`perfil_${cleanEmail}`, null);
   },
 
   async syncProfileFromCloud(user) {
-    if (!isSupabaseConfigured || !supabase || !user?.id) return null;
+    if (!isSupabaseConfigured || !supabase || !user?.email) return null;
+    const cleanEmail = (user.email || '').trim().toLowerCase();
     try {
+      console.log(`[Profile Sync] Sincronizando perfil para ${cleanEmail}...`);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .eq('user_email', cleanEmail)
+        .maybeSingle();
+
+      const localProfile = this.getProfile(cleanEmail);
 
       if (!error && data) {
         const profile = {
           nome: data.nome,
           faixa: data.faixa,
-          sobra: data.sobra,
+          sobra: Number(data.sobra) || 0,
           dificuldade: data.dificuldade,
-          meta: data.meta,
+          meta: Number(data.meta) || 0,
           sabeParaOnde: data.sabe_para_onde,
           sabeInvestir: data.sabe_investir,
           badge: data.badge,
           dataCadastro: data.updated_at ? data.updated_at.slice(0, 10) : new Date().toISOString().slice(0, 10)
         };
-        storage.set(`perfil_${user.email}`, profile);
+        storage.set(`perfil_${cleanEmail}`, profile);
+
+        if (data.budgets && typeof data.budgets === 'object') {
+          storage.set(`budgets_${cleanEmail}`, data.budgets);
+        }
+
         return profile;
+      } else if (localProfile) {
+        console.log(`[Profile Sync] Enviando perfil local para a nuvem...`);
+        const budgets = storage.get(`budgets_${cleanEmail}`, {});
+        await supabase.from('profiles').upsert({
+          user_email: cleanEmail,
+          id: user.id ? String(user.id) : cleanEmail,
+          nome: localProfile.nome,
+          faixa: localProfile.faixa,
+          sobra: localProfile.sobra,
+          dificuldade: localProfile.dificuldade,
+          meta: localProfile.meta,
+          sabe_para_onde: localProfile.sabeParaOnde,
+          sabe_investir: localProfile.sabeInvestir,
+          badge: localProfile.badge,
+          budgets: budgets,
+          updated_at: new Date().toISOString()
+        }).then(() => {}).catch((e) => console.warn('[Profile Sync Upsert]', e));
+        return localProfile;
       }
     } catch (e) {
-      console.warn('Profile sync error:', e);
+      console.warn('[Profile Sync] Exceção:', e);
     }
-    return null;
+    return this.getProfile(cleanEmail);
   },
 
   saveProfile(userEmail, answers, userId = null) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     const profile = {
-      nome: answers.nome || userEmail.split('@')[0],
+      nome: answers.nome || cleanEmail.split('@')[0],
       faixa: answers.faixa || '',
       sobra: Number(answers.sobra) || 0,
       dificuldade: answers.dificuldade || '',
@@ -176,12 +205,14 @@ export const gamification = {
       dataCadastro: new Date().toISOString().slice(0, 10)
     };
     profile.badge = computeBadge(profile);
-    storage.set(`perfil_${userEmail}`, profile);
+    storage.set(`perfil_${cleanEmail}`, profile);
 
-    // Sync profile to Supabase
-    if (isSupabaseConfigured && supabase && userId) {
+    // Sync profile to Supabase by user_email
+    if (isSupabaseConfigured && supabase) {
+      const budgets = storage.get(`budgets_${cleanEmail}`, {});
       supabase.from('profiles').upsert({
-        id: userId,
+        user_email: cleanEmail,
+        id: userId ? String(userId) : cleanEmail,
         nome: profile.nome,
         faixa: profile.faixa,
         sobra: profile.sobra,
@@ -190,8 +221,11 @@ export const gamification = {
         sabe_para_onde: profile.sabeParaOnde,
         sabe_investir: profile.sabeInvestir,
         badge: profile.badge,
+        budgets: budgets,
         updated_at: new Date().toISOString()
-      }).then(() => {}).catch(() => {});
+      }).then(({ error }) => {
+        if (error) console.warn('[Profile Save] Erro Supabase:', error);
+      }).catch((err) => console.warn('[Profile Save] Exceção:', err));
     }
 
     return profile;

@@ -82,15 +82,24 @@ export const walletService = {
 
   async syncWithCloud(user) {
     if (!isSupabaseConfigured || !supabase || !user?.email) return;
+    const cleanEmail = (user.email || '').trim().toLowerCase();
     try {
+      console.log(`[Wallet Sync] Sincronizando carteira para ${cleanEmail}...`);
       const { data, error } = await supabase
         .from('wallets')
         .select('*')
+        .eq('user_email', cleanEmail)
         .order('atualizado_em', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (error) {
+        console.warn('[Wallet Sync] Erro ao buscar carteiras na nuvem:', error);
+      }
+
+      const localWallets = this.getWallets(cleanEmail);
+
+      if (!error && data) {
         const mapped = data.map((w) => ({
-          id: w.id.toString(),
+          id: String(w.id),
           nome: w.nome,
           tipo: w.tipo,
           saldo: Number(w.saldo),
@@ -99,21 +108,44 @@ export const walletService = {
           dataInicio: w.data_inicio || new Date().toISOString().slice(0, 10),
           atualizadoEm: w.atualizado_em || new Date().toISOString()
         }));
-        this.saveWallets(user.email, mapped);
+
+        const cloudIds = new Set(mapped.map((c) => String(c.id)));
+        const localOnly = localWallets.filter((lw) => !cloudIds.has(String(lw.id)));
+
+        if (localOnly.length > 0) {
+          console.log(`[Wallet Sync] Enviando ${localOnly.length} carteiras locais para a nuvem...`);
+          for (const item of localOnly) {
+            await supabase.from('wallets').insert({
+              id: String(item.id),
+              nome: item.nome,
+              tipo: item.tipo,
+              saldo: item.saldo,
+              moeda: item.moeda || 'BRL',
+              obs: item.obs || '',
+              data_inicio: item.dataInicio,
+              atualizado_em: item.atualizadoEm,
+              user_email: cleanEmail
+            }).then(() => {}).catch((e) => console.warn('[Wallet Sync Insert]', e));
+          }
+        }
+
+        const merged = [...mapped, ...localOnly];
+        this.saveWallets(cleanEmail, merged);
       }
     } catch (err) {
-      console.warn('Wallet cloud sync error:', err);
+      console.warn('[Wallet Sync] Erro:', err);
     }
   },
 
   addWallet(userEmail, { nome, tipo, saldo, moeda, obs, dataInicio }) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     const numericSaldo = parseFloat(saldo);
     if (!nome || isNaN(numericSaldo)) {
       throw new Error('Preencha o nome da conta e o saldo corretamente.');
     }
 
-    const list = this.getWallets(userEmail);
-    const newId = Date.now().toString();
+    const list = this.getWallets(cleanEmail);
+    const newId = String(Date.now());
     const item = {
       id: newId,
       nome: nome.trim(),
@@ -126,26 +158,32 @@ export const walletService = {
     };
 
     list.push(item);
-    this.saveWallets(userEmail, list);
+    this.saveWallets(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
       supabase.from('wallets').insert({
+        id: item.id,
         nome: item.nome,
         tipo: item.tipo,
         saldo: item.saldo,
         moeda: item.moeda,
         obs: item.obs,
         data_inicio: item.dataInicio,
-        user_email: userEmail
-      }).then(() => {}).catch(() => {});
+        atualizado_em: item.atualizadoEm,
+        user_email: cleanEmail
+      }).then(({ error }) => {
+        if (error) console.warn('[Wallet Insert] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Wallet Insert] Exceção:', e));
     }
 
     return item;
   },
 
   updateWallet(userEmail, id, updates) {
-    const list = this.getWallets(userEmail);
-    const idx = list.findIndex((w) => w.id === id);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const strId = String(id);
+    const list = this.getWallets(cleanEmail);
+    const idx = list.findIndex((w) => String(w.id) === strId);
     if (idx === -1) throw new Error('Conta não encontrada.');
 
     list[idx] = {
@@ -155,7 +193,7 @@ export const walletService = {
       atualizadoEm: new Date().toISOString()
     };
 
-    this.saveWallets(userEmail, list);
+    this.saveWallets(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
       supabase.from('wallets').update({
@@ -165,19 +203,25 @@ export const walletService = {
         moeda: list[idx].moeda,
         obs: list[idx].obs,
         data_inicio: list[idx].dataInicio,
-        atualizado_em: new Date().toISOString()
-      }).eq('id', id).then(() => {}).catch(() => {});
+        atualizado_em: list[idx].atualizadoEm
+      }).eq('id', strId).eq('user_email', cleanEmail).then(({ error }) => {
+        if (error) console.warn('[Wallet Update] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Wallet Update] Exceção:', e));
     }
 
     return list[idx];
   },
 
   deleteWallet(userEmail, id) {
-    const list = this.getWallets(userEmail).filter((w) => w.id !== id);
-    this.saveWallets(userEmail, list);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const strId = String(id);
+    const list = this.getWallets(cleanEmail).filter((w) => String(w.id) !== strId);
+    this.saveWallets(cleanEmail, list);
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('wallets').delete().eq('id', id).then(() => {}).catch(() => {});
+      supabase.from('wallets').delete().eq('id', strId).eq('user_email', cleanEmail).then(({ error }) => {
+        if (error) console.warn('[Wallet Delete] Erro Supabase:', error);
+      }).catch((e) => console.warn('[Wallet Delete] Exceção:', e));
     }
 
     return list;

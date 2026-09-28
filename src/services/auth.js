@@ -98,14 +98,16 @@ export const auth = {
     const cleanEmail = email.trim().toLowerCase();
 
     if (isSupabaseConfigured && supabase) {
-      // Send magic login link or sign in
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: cleanEmail,
-        options: {
-          emailRedirectTo: window.location.origin
-        }
-      });
-      if (error) throw error;
+      try {
+        await supabase.auth.signInWithOtp({
+          email: cleanEmail,
+          options: {
+            emailRedirectTo: window.location.origin
+          }
+        });
+      } catch (err) {
+        console.warn('[Auth] signInWithOtp aviso:', err);
+      }
     }
 
     const user = {
