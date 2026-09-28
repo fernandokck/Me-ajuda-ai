@@ -71,13 +71,45 @@ export const WALLET_TYPES = [
 ];
 
 export const walletService = {
+  deduplicateWallets(list) {
+    if (!Array.isArray(list)) return { unique: [], dupIds: [] };
+    const seenSigs = new Set();
+    const seenIds = new Set();
+    const unique = [];
+    const dupIds = [];
+
+    for (const w of list) {
+      if (!w) continue;
+      const idStr = String(w.id);
+      const cleanName = (w.nome || '').trim().toLowerCase();
+      const sig = `${cleanName}_${w.moeda || 'BRL'}_${w.tipo || 'conta'}`;
+
+      if (!seenIds.has(idStr) && !seenSigs.has(sig)) {
+        seenIds.add(idStr);
+        seenSigs.add(sig);
+        unique.push(w);
+      } else {
+        dupIds.push(idStr);
+      }
+    }
+    return { unique, dupIds };
+  },
+
   getWallets(userEmail) {
-    return storage.get(`wallets_${userEmail}`, []);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const raw = storage.get(`wallets_${cleanEmail}`, []);
+    const { unique } = this.deduplicateWallets(raw);
+    if (unique.length !== raw.length) {
+      storage.set(`wallets_${cleanEmail}`, unique);
+    }
+    return unique;
   },
 
   saveWallets(userEmail, list) {
-    storage.set(`wallets_${userEmail}`, list);
-    return list;
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const { unique } = this.deduplicateWallets(list);
+    storage.set(`wallets_${cleanEmail}`, unique);
+    return unique;
   },
 
   async syncWithCloud(user) {
@@ -109,8 +141,20 @@ export const walletService = {
           atualizadoEm: w.atualizado_em || new Date().toISOString()
         }));
 
-        const cloudIds = new Set(mapped.map((c) => String(c.id)));
-        const localOnly = localWallets.filter((lw) => !cloudIds.has(String(lw.id)));
+        const { unique: cloudUnique, dupIds } = this.deduplicateWallets(mapped);
+        if (dupIds.length > 0) {
+          for (const dId of dupIds) {
+            supabase.from('wallets').delete().eq('id', dId).eq('user_email', cleanEmail).then(() => {}).catch(() => {});
+          }
+        }
+
+        const cloudSigs = new Set(cloudUnique.map((c) => `${(c.nome || '').trim().toLowerCase()}_${c.moeda || 'BRL'}_${c.tipo || 'conta'}`));
+        const cloudIds = new Set(cloudUnique.map((c) => String(c.id)));
+
+        const localOnly = localWallets.filter((lw) => {
+          const sig = `${(lw.nome || '').trim().toLowerCase()}_${lw.moeda || 'BRL'}_${lw.tipo || 'conta'}`;
+          return !cloudIds.has(String(lw.id)) && !cloudSigs.has(sig);
+        });
 
         if (localOnly.length > 0) {
           console.log(`[Wallet Sync] Enviando ${localOnly.length} carteiras locais para a nuvem...`);
@@ -129,8 +173,9 @@ export const walletService = {
           }
         }
 
-        const merged = [...mapped, ...localOnly];
-        this.saveWallets(cleanEmail, merged);
+        const merged = [...cloudUnique, ...localOnly];
+        const { unique: finalWallets } = this.deduplicateWallets(merged);
+        storage.set(`wallets_${cleanEmail}`, finalWallets);
       }
     } catch (err) {
       console.warn('[Wallet Sync] Erro:', err);

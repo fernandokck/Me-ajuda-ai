@@ -164,20 +164,55 @@ export function monthsBetween(a, b) {
 }
 
 export const finance = {
+  deduplicateTransactions(list) {
+    if (!Array.isArray(list)) return { unique: [], duplicateIds: [] };
+    const seenSigs = new Set();
+    const seenIds = new Set();
+    const unique = [];
+    const duplicateIds = [];
+
+    for (const t of list) {
+      if (!t) continue;
+      const idStr = String(t.id);
+      const cleanDesc = (t.desc || t.descricao || '').trim().toLowerCase().replace(' (recorrente)', '');
+      const numVal = Number(t.valor) || 0;
+      const sig = `${t.data}_${cleanDesc}_${numVal.toFixed(2)}_${t.tipo}`;
+
+      if (!seenIds.has(idStr) && !seenSigs.has(sig)) {
+        seenIds.add(idStr);
+        seenSigs.add(sig);
+        unique.push(t);
+      } else {
+        duplicateIds.push(idStr);
+      }
+    }
+    return { unique, duplicateIds };
+  },
+
   getTransactions(userEmail) {
-    return storage.get(`tx_${userEmail}`, []);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const raw = storage.get(`tx_${cleanEmail}`, []);
+    const { unique } = this.deduplicateTransactions(raw);
+    if (unique.length !== raw.length) {
+      storage.set(`tx_${cleanEmail}`, unique);
+    }
+    return unique;
   },
 
   setTransactions(userEmail, list) {
-    storage.set(`tx_${userEmail}`, list);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const { unique } = this.deduplicateTransactions(list);
+    storage.set(`tx_${cleanEmail}`, unique);
   },
 
   getRecurring(userEmail) {
-    return storage.get(`rec_${userEmail}`, []);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    return storage.get(`rec_${cleanEmail}`, []);
   },
 
   setRecurring(userEmail, list) {
-    storage.set(`rec_${userEmail}`, list);
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    storage.set(`rec_${cleanEmail}`, list);
   },
 
   async syncWithCloud(user) {
@@ -211,18 +246,33 @@ export const finance = {
           recorrenteId: t.recorrente_id ? String(t.recorrente_id) : null
         }));
 
-        // Check local transactions that are not in the cloud
-        const cloudIds = new Set(cloudMapped.map((c) => String(c.id)));
-        const cloudSignatures = new Set(cloudMapped.map((c) => `${c.data}_${c.desc}_${c.valor}_${c.tipo}`));
+        // Deduplicate cloud transactions and clean duplicate IDs from Supabase
+        const { unique: cloudUnique, duplicateIds } = this.deduplicateTransactions(cloudMapped);
+        if (duplicateIds.length > 0) {
+          console.log(`[Finance Sync] Removendo ${duplicateIds.length} duplicatas do Supabase...`);
+          for (const dId of duplicateIds) {
+            supabase.from('transactions').delete().eq('id', dId).eq('user_email', cleanEmail).then(() => {}).catch(() => {});
+          }
+        }
+
+        // Check local transactions that are genuinely not in cloud
+        const cloudSigs = new Set(cloudUnique.map((c) => {
+          const cleanDesc = (c.desc || '').trim().toLowerCase().replace(' (recorrente)', '');
+          const numVal = Number(c.valor) || 0;
+          return `${c.data}_${cleanDesc}_${numVal.toFixed(2)}_${c.tipo}`;
+        }));
+        const cloudIds = new Set(cloudUnique.map((c) => String(c.id)));
 
         const localOnly = localTx.filter((lt) => {
-          const sig = `${lt.data}_${lt.desc}_${lt.valor}_${lt.tipo}`;
-          return !cloudIds.has(String(lt.id)) && !cloudSignatures.has(sig);
+          const cleanDesc = (lt.desc || '').trim().toLowerCase().replace(' (recorrente)', '');
+          const numVal = Number(lt.valor) || 0;
+          const sig = `${lt.data}_${cleanDesc}_${numVal.toFixed(2)}_${lt.tipo}`;
+          return !cloudIds.has(String(lt.id)) && !cloudSigs.has(sig);
         });
 
         // Push local-only transactions to Supabase
         if (localOnly.length > 0) {
-          console.log(`[Finance Sync] Enviando ${localOnly.length} transações locais para a nuvem...`);
+          console.log(`[Finance Sync] Enviando ${localOnly.length} transações locais exclusivas para a nuvem...`);
           for (const item of localOnly) {
             const validId = (item.id && String(item.id).length === 36 && String(item.id).includes('-')) ? String(item.id) : generateUUID();
             item.id = validId;
@@ -240,8 +290,9 @@ export const finance = {
           }
         }
 
-        const mergedTx = [...cloudMapped, ...localOnly];
-        this.setTransactions(cleanEmail, mergedTx);
+        const mergedTx = [...cloudUnique, ...localOnly];
+        const { unique: finalTx } = this.deduplicateTransactions(mergedTx);
+        storage.set(`tx_${cleanEmail}`, finalTx);
       }
 
       // 2. Sync Recurring Rules
@@ -268,11 +319,31 @@ export const finance = {
           criadoEm: r.criado_em
         }));
 
-        const cloudRecIds = new Set(mappedRec.map((c) => String(c.id)));
-        const cloudRecSigs = new Set(mappedRec.map((c) => `${c.desc}_${c.valor}_${c.diaVencimento}`));
+        // Deduplicate recurring rules
+        const seenRecSigs = new Set();
+        const uniqueRec = [];
+        const dupRecIds = [];
+        for (const r of mappedRec) {
+          const sig = `${(r.desc || '').trim().toLowerCase()}_${Number(r.valor).toFixed(2)}_${r.diaVencimento}_${r.tipo}`;
+          if (!seenRecSigs.has(sig)) {
+            seenRecSigs.add(sig);
+            uniqueRec.push(r);
+          } else {
+            dupRecIds.push(String(r.id));
+          }
+        }
+
+        if (dupRecIds.length > 0) {
+          for (const rId of dupRecIds) {
+            supabase.from('recurring_rules').delete().eq('id', rId).eq('user_email', cleanEmail).then(() => {}).catch(() => {});
+          }
+        }
+
+        const cloudRecSigs = new Set(uniqueRec.map((c) => `${(c.desc || '').trim().toLowerCase()}_${Number(c.valor).toFixed(2)}_${c.diaVencimento}_${c.tipo}`));
+        const cloudRecIds = new Set(uniqueRec.map((c) => String(c.id)));
 
         const localRecOnly = localRec.filter((lr) => {
-          const sig = `${lr.desc}_${lr.valor}_${lr.diaVencimento}`;
+          const sig = `${(lr.desc || '').trim().toLowerCase()}_${Number(lr.valor).toFixed(2)}_${lr.diaVencimento}_${lr.tipo}`;
           return !cloudRecIds.has(String(lr.id)) && !cloudRecSigs.has(sig);
         });
 
@@ -295,7 +366,7 @@ export const finance = {
           }
         }
 
-        const mergedRec = [...mappedRec, ...localRecOnly];
+        const mergedRec = [...uniqueRec, ...localRecOnly];
         this.setRecurring(cleanEmail, mergedRec);
       }
     } catch (e) {
@@ -311,12 +382,23 @@ export const finance = {
     let updated = false;
 
     recorrentes.forEach((r) => {
+      const cleanRuleDesc = (r.desc || '').trim().toLowerCase();
+      const ruleVal = Number(r.valor) || 0;
+
       monthsBetween(r.criadoEm, cur).forEach((ym) => {
-        const exists = transacoes.some(
-          (t) => String(t.recorrenteId) === String(r.id) && monthKey(t.data) === ym
-        );
-        if (!exists) {
-          transacoes.push({
+        // Robust check: matches by recorrenteId OR (month, clean description, value, type)
+        const existingTx = transacoes.find((t) => {
+          if (monthKey(t.data) !== ym) return false;
+          if (String(t.recorrenteId) === String(r.id)) return true;
+          const cleanTxDesc = (t.desc || '').trim().toLowerCase().replace(' (recorrente)', '');
+          const sameDesc = cleanTxDesc === cleanRuleDesc || cleanTxDesc.startsWith(cleanRuleDesc);
+          const sameVal = Math.abs((Number(t.valor) || 0) - ruleVal) < 0.01;
+          const sameType = t.tipo === r.tipo;
+          return sameDesc && sameVal && sameType;
+        });
+
+        if (!existingTx) {
+          const newTx = {
             id: generateUUID(),
             tipo: r.tipo,
             subcategoria: r.subcategoria || '',
@@ -325,14 +407,35 @@ export const finance = {
             valor: Number(r.valor),
             moeda: r.moeda || 'BRL',
             recorrenteId: String(r.id)
-          });
+          };
+          transacoes.push(newTx);
+          updated = true;
+
+          // Push new occurrence to Supabase if connected
+          if (isSupabaseConfigured && supabase) {
+            supabase.from('transactions').insert({
+              id: newTx.id,
+              tipo: newTx.tipo,
+              subcategoria: newTx.subcategoria,
+              data: newTx.data,
+              descricao: newTx.desc,
+              valor: newTx.valor,
+              moeda: newTx.moeda,
+              recorrente_id: newTx.recorrenteId,
+              user_email: cleanEmail
+            }).then(() => {}).catch(() => {});
+          }
+        } else if (!existingTx.recorrenteId || String(existingTx.recorrenteId) !== String(r.id)) {
+          existingTx.recorrenteId = String(r.id);
           updated = true;
         }
       });
     });
 
     if (updated) {
-      this.setTransactions(cleanEmail, transacoes);
+      const { unique } = this.deduplicateTransactions(transacoes);
+      storage.set(`tx_${cleanEmail}`, unique);
+      return unique;
     }
     return transacoes;
   },
