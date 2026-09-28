@@ -5,6 +5,7 @@
 import { gamification } from '../services/gamification.js';
 import { storage } from '../services/storage.js';
 import { showToast } from './toast.js';
+import { SOCIAL_ICONS } from './icons.js';
 
 export function openProfileModal(user, profile, onSaved) {
   const existing = document.getElementById('profile-edit-modal');
@@ -65,27 +66,32 @@ export function openProfileModal(user, profile, onSaved) {
         </div>
 
         <div class="social-input-row">
-          <span class="social-input-icon">📸</span>
+          <span class="social-input-icon">${SOCIAL_ICONS.instagram}</span>
           <input id="pf-instagram" type="text" class="input" placeholder="Instagram (@seu_perfil)" value="${currentSocials.instagram || ''}">
         </div>
 
         <div class="social-input-row">
-          <span class="social-input-icon">💼</span>
+          <span class="social-input-icon">${SOCIAL_ICONS.linkedin}</span>
           <input id="pf-linkedin" type="text" class="input" placeholder="LinkedIn (ex: linkedin.com/in/voce)" value="${currentSocials.linkedin || ''}">
         </div>
 
         <div class="social-input-row">
-          <span class="social-input-icon">🎥</span>
+          <span class="social-input-icon">${SOCIAL_ICONS.youtube}</span>
           <input id="pf-youtube" type="text" class="input" placeholder="YouTube (@seu_canal)" value="${currentSocials.youtube || ''}">
         </div>
 
         <div class="social-input-row">
-          <span class="social-input-icon">🎵</span>
+          <span class="social-input-icon">${SOCIAL_ICONS.tiktok}</span>
           <input id="pf-tiktok" type="text" class="input" placeholder="TikTok (@seu_tiktok)" value="${currentSocials.tiktok || ''}">
         </div>
 
         <div class="social-input-row">
-          <span class="social-input-icon">𝕏</span>
+          <span class="social-input-icon">${SOCIAL_ICONS.whatsapp}</span>
+          <input id="pf-whatsapp" type="text" class="input" placeholder="WhatsApp (ex: (11) 99999-9999)" value="${currentSocials.whatsapp || ''}">
+        </div>
+
+        <div class="social-input-row">
+          <span class="social-input-icon">${SOCIAL_ICONS.twitter}</span>
           <input id="pf-twitter" type="text" class="input" placeholder="Twitter / X (@seu_user)" value="${currentSocials.twitter || ''}">
         </div>
 
@@ -129,6 +135,7 @@ export function openProfileModal(user, profile, onSaved) {
       linkedin: modal.querySelector('#pf-linkedin').value.trim(),
       youtube: modal.querySelector('#pf-youtube').value.trim(),
       tiktok: modal.querySelector('#pf-tiktok').value.trim(),
+      whatsapp: modal.querySelector('#pf-whatsapp').value.trim(),
       twitter: modal.querySelector('#pf-twitter').value.trim()
     };
 

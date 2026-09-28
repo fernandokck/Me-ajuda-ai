@@ -6,17 +6,25 @@ import Chart from 'chart.js/auto';
 import {
   finance,
   fmtBRL,
+  fmtCurrencyTx,
   curMonthKey,
   todayKey,
   CATEGORIES,
   TAG_CLASSES,
-  TAG_LABELS
+  TAG_LABELS,
+  getCategoryIcon
 } from '../services/finance.js';
 import { budgetService } from '../services/budget.js';
 import { gamification } from '../services/gamification.js';
 import { pwa } from '../services/pwa.js';
+import { storage } from '../services/storage.js';
+import { walletService, fmtCurrency } from '../services/wallet.js';
+import { attachCurrencyMask } from '../utils/mask.js';
 import { showToast } from './toast.js';
 import { showBadgeModal3D } from './badgeModal.js';
+import { openTransactionsModal } from './transactionsModal.js';
+import { openRecurringModal } from './recurringModal.js';
+import { openTransactionEditModal } from './transactionEditModal.js';
 
 let historyChartInstance = null;
 
@@ -126,6 +134,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                   <label for="tx-tipo">Tipo</label>
                   <select id="tx-tipo" class="input">
                     <option value="salario">Salário / Renda</option>
+                    <option value="freelance">Free Lancer</option>
                     <option value="contafixa">Conta Fixa</option>
                     <option value="gasto" selected>Gasto Variável</option>
                     <option value="investimento">Investimento</option>
@@ -140,11 +149,23 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
               <div class="form-row">
                 <div class="form-field-wrapper">
                   <label for="tx-desc">Descrição</label>
-                  <input id="tx-desc" type="text" class="input" placeholder="Ex: Supermercado, Aluguel..." required>
+                  <input id="tx-desc" type="text" class="input" placeholder="Ex: Supermercado, Aluguel, Aporte..." required>
                 </div>
                 <div class="form-field-wrapper">
-                  <label for="tx-valor">Valor (R$)</label>
-                  <input id="tx-valor" type="number" step="0.01" min="0.01" class="input" placeholder="0,00" required>
+                  <label for="tx-valor" id="lbl-tx-valor">Valor (R$)</label>
+                  <input id="tx-valor" type="text" inputmode="numeric" class="input" placeholder="0,00" required>
+                </div>
+              </div>
+
+              <!-- Seleção de Moeda para Investimentos (BRL / USD / EUR) -->
+              <div class="form-row hidden" id="row-moeda-invest">
+                <div class="form-field-wrapper" style="grid-column: 1 / -1;">
+                  <label for="tx-moeda">Moeda da Aplicação / Investimento</label>
+                  <select id="tx-moeda" class="input">
+                    <option value="BRL" selected>🇧🇷 Real Brasileiro (BRL - R$)</option>
+                    <option value="USD">🇺🇸 Dólar Americano (USD - $)</option>
+                    <option value="EUR">🇪🇺 Euro (EUR - €)</option>
+                  </select>
                 </div>
               </div>
 
@@ -152,7 +173,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                 <div class="form-field-wrapper" style="grid-column: 1 / -1;">
                   <label for="tx-subcat">Categoria</label>
                   <select id="tx-subcat" class="input">
-                    ${CATEGORIES.gasto.map((c) => `<option value="${c}">${c}</option>`).join('')}
+                    ${CATEGORIES.gasto.map((c) => `<option value="${c}">${getCategoryIcon(c)} ${c}</option>`).join('')}
                   </select>
                 </div>
               </div>
@@ -175,12 +196,26 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
             </form>
           </div>
 
-          <!-- Contas Recorrentes -->
+          <!-- Contas Recorrentes (Limitado a ~5 itens visíveis com rolagem por toque e Ver Todos) -->
           <div class="card card-dash-section">
             <div class="card-title-row">
-              <h3>🔁 Contas Recorrentes</h3>
-              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">${recorrentes.length} ativas</span>
+              <div>
+                <h3>🔁 Contas Recorrentes</h3>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">
+                  ${recorrentes.length} ${recorrentes.length === 1 ? 'regra ativa' : 'regras ativas'} · Role para ver mais
+                </div>
+              </div>
+              ${
+                recorrentes.length > 0
+                  ? `
+                <button id="btn-open-rec-modal" class="btn btn-secondary btn-xs" title="Ver todas as contas recorrentes em tela cheia">
+                  🔍 Ver todas
+                </button>
+              `
+                  : ''
+              }
             </div>
+            
             <div id="recurring-list" class="dash-scrollable-list">
               ${
                 recorrentes.length === 0
@@ -191,7 +226,10 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                     <div class="recurring-item-row">
                       <div class="recurring-item-info">
                         <strong>${r.desc}</strong>
-                        <div class="recurring-item-sub">Todo dia ${r.diaVencimento} · ${TAG_LABELS[r.tipo] || r.tipo}</div>
+                        <div class="recurring-item-sub">
+                          Todo dia ${r.diaVencimento} · ${TAG_LABELS[r.tipo] || r.tipo}
+                          ${r.subcategoria ? ` · <span style="font-weight:600;">${getCategoryIcon(r.subcategoria)} ${r.subcategoria}</span>` : ''}
+                        </div>
                       </div>
                       <div class="recurring-item-action">
                         <strong style="color: var(--text-main); font-size: 13.5px;">${fmtBRL(r.valor)}</strong>
@@ -203,27 +241,53 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                       .join('')
               }
             </div>
+
+            ${
+              recorrentes.length > 4
+                ? `
+              <div class="dash-list-footer-cta">
+                <button id="btn-rec-more-footer" class="btn-text-link">
+                  Ver todas as ${recorrentes.length} contas recorrentes →
+                </button>
+              </div>
+            `
+                : ''
+            }
           </div>
 
-          <!-- Lançamentos do Mês -->
+          <!-- Lançamentos do Mês (Limitado a ~5 itens com rolagem por toque e Ver Todos) -->
           <div class="card card-dash-section">
             <div class="card-title-row">
-              <h3>📝 Lançamentos do Mês</h3>
-              <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">${kpis.transactions.length} registros</span>
+              <div>
+                <h3>📝 Lançamentos do Mês</h3>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">
+                  ${kpis.transactions.length} ${kpis.transactions.length === 1 ? 'registro' : 'registros'} · Role para ver mais
+                </div>
+              </div>
+              ${
+                kpis.transactions.length > 0
+                  ? `
+                <button id="btn-open-tx-modal" class="btn btn-secondary btn-xs" title="Ver todos os lançamentos com busca e filtros">
+                  🔍 Ver todos
+                </button>
+              `
+                  : ''
+              }
             </div>
+
             ${
               kpis.transactions.length === 0
                 ? `<div class="empty-state">Nenhum lançamento registrado neste mês. Use o formulário acima para adicionar.</div>`
                 : `
-              <div class="table-wrap">
+              <div class="table-wrap dash-scrollable-table">
                 <table class="dash-table">
                   <thead>
                     <tr>
                       <th>Data</th>
                       <th>Descrição</th>
                       <th>Tipo</th>
-                      <th>Valor</th>
-                      <th style="width: 28px;"></th>
+                      <th style="text-align: right;">Valor</th>
+                      <th style="width: 58px; text-align: right;"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -231,16 +295,22 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                       .map(
                         (t) => `
                       <tr>
-                        <td style="white-space: nowrap; font-size: 12px;">${t.data.split('-').reverse().join('/')}</td>
+                        <td style="white-space: nowrap; font-size: 12px; color: var(--text-muted);">${t.data.split('-').reverse().join('/')}</td>
                         <td>
                           <strong>${t.desc}</strong>
-                          ${t.subcategoria ? `<div style="font-size: 11px; color: var(--text-muted);">${t.subcategoria}</div>` : ''}
+                          ${t.subcategoria ? `<div style="font-size: 11px; color: var(--text-muted);">${getCategoryIcon(t.subcategoria)} ${t.subcategoria}</div>` : ''}
                         </td>
-                        <td><span class="tag ${TAG_CLASSES[t.tipo] || 'tag-gasto'}">${TAG_LABELS[t.tipo] || t.tipo}</span></td>
-                        <td style="font-weight: 700; white-space: nowrap; color: ${t.tipo === 'salario' ? 'var(--green)' : 'var(--text-main)'};">
-                          ${t.tipo === 'salario' ? '+' : '-'} ${fmtBRL(t.valor)}
+                        <td>
+                          <span class="tag ${TAG_CLASSES[t.tipo] || 'tag-gasto'}">${TAG_LABELS[t.tipo] || t.tipo}</span>
+                          ${t.moeda && t.moeda !== 'BRL' ? `<span class="wallet-currency-pill ${t.moeda === 'USD' ? 'dollar' : 'eur'}" style="font-size: 9.5px; padding: 1px 5px; margin-left: 4px;">${t.moeda}</span>` : ''}
                         </td>
-                        <td><button class="btn-del btn-del-tx" data-id="${t.id}" title="Excluir lançamento">✕</button></td>
+                        <td style="font-weight: 700; white-space: nowrap; text-align: right; color: ${t.tipo === 'salario' || t.tipo === 'freelance' ? 'var(--green)' : 'var(--text-main)'};">
+                          ${t.tipo === 'salario' || t.tipo === 'freelance' ? '+' : '-'} ${fmtCurrencyTx(t.valor, t.moeda)}
+                        </td>
+                        <td style="text-align: right; white-space: nowrap;">
+                          <button class="btn-action-icon btn-edit-tx" data-id="${t.id}" title="Editar lançamento" style="margin-right: 4px;">✏️</button>
+                          <button class="btn-del btn-del-tx" data-id="${t.id}" title="Excluir lançamento">✕</button>
+                        </td>
                       </tr>
                     `
                       )
@@ -249,6 +319,18 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                 </table>
               </div>
             `
+            }
+
+            ${
+              kpis.transactions.length > 4
+                ? `
+              <div class="dash-list-footer-cta">
+                <button id="btn-tx-more-footer" class="btn-text-link">
+                  Ver todos os ${kpis.transactions.length} lançamentos detalhados →
+                </button>
+              </div>
+            `
+                : ''
             }
           </div>
         </div>
@@ -259,6 +341,15 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
           <div class="card card-dash-section">
             <div class="card-title-row">
               <h3>📊 Histórico Comparativo</h3>
+              ${
+                onNavigateTab
+                  ? `
+                <button id="btn-goto-evolucao-dash" class="btn btn-ghost btn-xs" style="color: var(--brand); font-weight: 700;">
+                  Ver Evolução Completa →
+                </button>
+              `
+                  : ''
+              }
             </div>
             <div class="chart-wrap">
               <canvas id="monthlyChart"></canvas>
@@ -277,7 +368,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                     <th>Mês</th>
                     <th>Receitas</th>
                     <th>Despesas</th>
-                    <th>Saldo</th>
+                    <th style="text-align: right;">Saldo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,7 +384,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                           <td><strong>${m.label}</strong></td>
                           <td style="color: var(--green); font-weight: 600; white-space: nowrap;">${fmtBRL(m.receita)}</td>
                           <td style="color: var(--red); font-weight: 600; white-space: nowrap;">${fmtBRL(m.despesa)}</td>
-                          <td style="color: ${m.saldo >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight: 700; white-space: nowrap;">
+                          <td style="color: ${m.saldo >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight: 700; white-space: nowrap; text-align: right;">
                             ${fmtBRL(m.saldo)}
                           </td>
                         </tr>
@@ -310,6 +401,14 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
     </div>
   `;
 
+  // Bind Goto Evolucao button
+  const btnGotoEvolucao = container.querySelector('#btn-goto-evolucao-dash');
+  if (btnGotoEvolucao && onNavigateTab) {
+    btnGotoEvolucao.addEventListener('click', () => {
+      onNavigateTab('historico');
+    });
+  }
+
   // Bind Compact Budget card click to navigate to 'metas' tab
   const btnGotoMetas = container.querySelector('#btn-goto-metas-dash');
   if (btnGotoMetas && onNavigateTab) {
@@ -317,6 +416,32 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
       onNavigateTab('metas');
     });
   }
+
+  // Bind Full Transactions Modal open buttons
+  const openTxModalHandler = () => {
+    openTransactionsModal(user, curMonthKey(), () => {
+      if (onDataChanged) onDataChanged();
+    });
+  };
+
+  const btnOpenTxModal = container.querySelector('#btn-open-tx-modal');
+  if (btnOpenTxModal) btnOpenTxModal.addEventListener('click', openTxModalHandler);
+
+  const btnTxMoreFooter = container.querySelector('#btn-tx-more-footer');
+  if (btnTxMoreFooter) btnTxMoreFooter.addEventListener('click', openTxModalHandler);
+
+  // Bind Full Recurring Modal open buttons
+  const openRecModalHandler = () => {
+    openRecurringModal(user, () => {
+      if (onDataChanged) onDataChanged();
+    });
+  };
+
+  const btnOpenRecModal = container.querySelector('#btn-open-rec-modal');
+  if (btnOpenRecModal) btnOpenRecModal.addEventListener('click', openRecModalHandler);
+
+  const btnRecMoreFooter = container.querySelector('#btn-rec-more-footer');
+  if (btnRecMoreFooter) btnRecMoreFooter.addEventListener('click', openRecModalHandler);
 
   // PWA banner installation & dismiss
   const pwaBanner = container.querySelector('#pwa-banner');
@@ -345,21 +470,64 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
     }
   }
 
-  // Form interactivity: Tipo change
+  // Form interactivity: Tipo & Moeda change
   const selectTipo = container.querySelector('#tx-tipo');
   const rowSubcat = container.querySelector('#row-subcategoria');
   const selectSubcat = container.querySelector('#tx-subcat');
+  const rowMoedaInvest = container.querySelector('#row-moeda-invest');
+  const selectMoeda = container.querySelector('#tx-moeda');
+  const lblValor = container.querySelector('#lbl-tx-valor');
+  const inputValor = container.querySelector('#tx-valor');
+
+  // Attach currency mask (automatically handles decimals, units, thousands with dot and comma)
+  const currencyMask = attachCurrencyMask(inputValor, () => {
+    if (selectTipo.value === 'investimento' && selectMoeda) {
+      return selectMoeda.value;
+    }
+    return 'BRL';
+  });
+
+  function updateCurrencyLabelsAndMask() {
+    const isInvest = selectTipo.value === 'investimento';
+    const moeda = isInvest && selectMoeda ? selectMoeda.value : 'BRL';
+
+    if (moeda === 'USD') {
+      if (lblValor) lblValor.textContent = 'Valor ($ - Dólar)';
+      inputValor.placeholder = '0.00';
+    } else if (moeda === 'EUR') {
+      if (lblValor) lblValor.textContent = 'Valor (€ - Euro)';
+      inputValor.placeholder = '0,00';
+    } else {
+      if (lblValor) lblValor.textContent = 'Valor (R$ - Real)';
+      inputValor.placeholder = '0,00';
+    }
+    if (currencyMask) currencyMask.reformat();
+  }
 
   selectTipo.addEventListener('change', () => {
     const val = selectTipo.value;
-    if (val === 'gasto' || val === 'investimento') {
+    if (val === 'gasto' || val === 'contafixa') {
       rowSubcat.classList.remove('hidden');
-      const cats = CATEGORIES[val] || [];
-      selectSubcat.innerHTML = cats.map((c) => `<option value="${c}">${c}</option>`).join('');
+      if (rowMoedaInvest) rowMoedaInvest.classList.add('hidden');
+      const cats = CATEGORIES.gasto || [];
+      selectSubcat.innerHTML = cats.map((c) => `<option value="${c}">${getCategoryIcon(c)} ${c}</option>`).join('');
+    } else if (val === 'investimento') {
+      rowSubcat.classList.remove('hidden');
+      if (rowMoedaInvest) rowMoedaInvest.classList.remove('hidden');
+      const cats = CATEGORIES.investimento || [];
+      selectSubcat.innerHTML = cats.map((c) => `<option value="${c}">${getCategoryIcon(c)} ${c}</option>`).join('');
     } else {
       rowSubcat.classList.add('hidden');
+      if (rowMoedaInvest) rowMoedaInvest.classList.add('hidden');
     }
+    updateCurrencyLabelsAndMask();
   });
+
+  if (selectMoeda) {
+    selectMoeda.addEventListener('change', () => {
+      updateCurrencyLabelsAndMask();
+    });
+  }
 
   // Recurring checkbox
   const checkRecorrente = container.querySelector('#tx-recorrente');
@@ -375,7 +543,8 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
     const tipo = selectTipo.value;
     const data = container.querySelector('#tx-data').value;
     const desc = container.querySelector('#tx-desc').value.trim();
-    const valor = container.querySelector('#tx-valor').value;
+    const valor = currencyMask ? currencyMask.getNumericValue() : inputValor.value;
+    const moeda = tipo === 'investimento' && selectMoeda ? selectMoeda.value : 'BRL';
     const subcategoria = !rowSubcat.classList.contains('hidden') ? selectSubcat.value : '';
     const recorrente = checkRecorrente.checked;
     const diaVencimento = container.querySelector('#tx-vencimento')?.value;
@@ -388,6 +557,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
         data,
         desc,
         valor,
+        moeda,
         subcategoria,
         recorrente,
         diaVencimento
@@ -395,7 +565,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
       showToast('Lançamento adicionado com sucesso!', 'success');
 
       // Check Budget Alert for this category
-      if (tipo === 'gasto' && subcategoria) {
+      if ((tipo === 'gasto' || tipo === 'contafixa') && subcategoria) {
         budgetService.checkBudgetAlert(userEmail, subcategoria);
       }
 
@@ -408,10 +578,41 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
         }, 400);
       }
 
+      // Check for 5% Yearly Savings Goal Progression Milestone
+      const savingsProgress = finance.calculateYearlySavingsProgress(userEmail);
+      if (savingsProgress.targetMeta > 0 && savingsProgress.milestoneTier > 0) {
+        const lastNotified = storage.get(`notified_milestone_${userEmail}`, 0);
+        if (savingsProgress.milestoneTier > lastNotified) {
+          storage.set(`notified_milestone_${userEmail}`, savingsProgress.milestoneTier);
+          setTimeout(() => {
+            showBadgeModal3D({
+              nome: `Meta Anual: ${savingsProgress.milestoneTier}% Conquistado!`,
+              titulo: `🎉 ${savingsProgress.milestoneTier}% da sua Meta Anual!`,
+              desc: `Incrível! Você já acumulou ${fmtBRL(savingsProgress.totalAccumulated)} da sua meta anual de ${fmtBRL(savingsProgress.targetMeta)} em aportes e investimentos. Continue com foco!`,
+              icone: '🎯',
+              cor: '#10b981'
+            }, user);
+          }, 600);
+        }
+      }
+
       onDataChanged();
     } catch (err) {
       showToast(err.message || 'Erro ao adicionar', 'error');
     }
+  });
+
+  // Edit transaction buttons
+  container.querySelectorAll('.btn-edit-tx').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = isNaN(btn.dataset.id) ? btn.dataset.id : Number(btn.dataset.id);
+      const tx = kpis.transactions.find((t) => t.id === id || t.id === btn.dataset.id);
+      if (tx) {
+        openTransactionEditModal(user, tx, () => {
+          if (onDataChanged) onDataChanged();
+        });
+      }
+    });
   });
 
   // Delete transaction buttons

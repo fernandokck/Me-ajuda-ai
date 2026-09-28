@@ -3,7 +3,7 @@
  */
 
 import { budgetService } from '../services/budget.js';
-import { CATEGORIES, fmtBRL } from '../services/finance.js';
+import { CATEGORIES, fmtBRL, getCategoryIcon } from '../services/finance.js';
 import { showToast } from './toast.js';
 
 export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
@@ -103,18 +103,4 @@ export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
     closeModal();
     if (onSaved) onSaved();
   });
-}
-
-function getCategoryIcon(cat) {
-  const map = {
-    'Alimentação': '🛒',
-    'Lanches/Besteiras': '🍔',
-    'Transporte': '🚗',
-    'Moradia': '🏠',
-    'Lazer': '🎉',
-    'Saúde': '💊',
-    'Educação': '📚',
-    'Outros': '📦'
-  };
-  return map[cat] || '🏷️';
 }

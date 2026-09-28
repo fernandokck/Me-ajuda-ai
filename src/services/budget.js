@@ -34,11 +34,11 @@ export const budgetService = {
   calculateCategoryProgress(userEmail, targetMonth = curMonthKey()) {
     const budgets = this.getBudgets(userEmail);
     const allTx = finance.getTransactions(userEmail);
-    const monthTx = allTx.filter((t) => monthKey(t.data) === targetMonth && t.tipo === 'gasto');
+    const monthTx = allTx.filter((t) => monthKey(t.data) === targetMonth && (t.tipo === 'gasto' || t.tipo === 'contafixa'));
 
     const spentByCategory = {};
     monthTx.forEach((t) => {
-      const cat = t.subcategoria || 'Outros';
+      const cat = t.subcategoria || (t.tipo === 'contafixa' ? 'Moradia' : 'Outros');
       spentByCategory[cat] = (spentByCategory[cat] || 0) + Number(t.valor);
     });
 

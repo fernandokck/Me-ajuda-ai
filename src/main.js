@@ -10,6 +10,7 @@ import './styles/layout.css';
 import { auth } from './services/auth.js';
 import { gamification } from './services/gamification.js';
 import { finance } from './services/finance.js';
+import { walletService } from './services/wallet.js';
 import { pwa } from './services/pwa.js';
 import { storage } from './services/storage.js';
 
@@ -18,6 +19,8 @@ import { renderOnboarding } from './components/onboarding.js';
 import { renderBadgeReveal } from './components/badgeReveal.js';
 import { renderHeader } from './components/header.js';
 import { renderDashboard } from './components/dashboard.js';
+import { renderCarteiraView } from './components/carteira.js';
+import { renderHistoricoView } from './components/historico.js';
 import { renderMetasView } from './components/metas.js';
 import { renderScoreView } from './components/score.js';
 import { renderAchievements } from './components/achievements.js';
@@ -44,7 +47,8 @@ class App {
         // Sync with cloud if Supabase is active
         await Promise.all([
           finance.syncWithCloud(user),
-          gamification.syncProfileFromCloud(user)
+          gamification.syncProfileFromCloud(user),
+          walletService.syncWithCloud(user)
         ]);
 
         finance.generateRecurring(user.email);
@@ -77,7 +81,8 @@ class App {
     renderLogin(this.root, async (user) => {
       await Promise.all([
         finance.syncWithCloud(user),
-        gamification.syncProfileFromCloud(user)
+        gamification.syncProfileFromCloud(user),
+        walletService.syncWithCloud(user)
       ]);
       const profile = gamification.getProfile(user.email);
       if (!profile) {
@@ -148,6 +153,14 @@ class App {
         this.renderActiveTabContent(user, profile);
       }, (tabId) => {
         this.switchTab(tabId, user, profile);
+      });
+    } else if (this.currentTab === 'carteira') {
+      renderCarteiraView(content, user, () => {
+        this.renderActiveTabContent(user, profile);
+      });
+    } else if (this.currentTab === 'historico') {
+      renderHistoricoView(content, user, () => {
+        this.renderActiveTabContent(user, profile);
       });
     } else if (this.currentTab === 'metas') {
       renderMetasView(content, user, () => {

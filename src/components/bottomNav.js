@@ -5,6 +5,8 @@
 export function renderBottomNav(container, activeTab, onTabChange) {
   const tabs = [
     { id: 'dash', label: 'Painel', icon: '📊' },
+    { id: 'carteira', label: 'Carteira', icon: '💼' },
+    { id: 'historico', label: 'Evolução', icon: '📈' },
     { id: 'metas', label: 'Metas', icon: '🎯' },
     { id: 'score', label: 'Score', icon: '⚡' },
     { id: 'ach', label: 'Conquistas', icon: '🏆' },

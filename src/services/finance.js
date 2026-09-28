@@ -11,9 +11,13 @@ export const CATEGORIES = {
   gasto: [
     'Alimentação',
     'Lanches/Besteiras',
+    'Hortifrutti',
     'Transporte',
     'Moradia',
     'Lazer',
+    'Streamer',
+    'Viagens',
+    'Trabalho',
     'Saúde',
     'Educação',
     'Outros'
@@ -27,8 +31,33 @@ export const CATEGORIES = {
   ]
 };
 
+export const CATEGORY_ICONS = {
+  'Alimentação': '🛒',
+  'Lanches/Besteiras': '🍔',
+  'Hortifrutti': '🥬',
+  'Transporte': '🚗',
+  'Moradia': '🏠',
+  'Lazer': '🎉',
+  'Streamer': '📺',
+  'Viagens': '✈️',
+  'Trabalho': '💼',
+  'Saúde': '💊',
+  'Educação': '📚',
+  'Outros': '📦',
+  'Reserva de Emergência': '🛡️',
+  'Renda Fixa / CDB / Tesouro': '🏦',
+  'Ações / FIIs': '📈',
+  'Criptomoedas': '🪙',
+  'Outro Investimento': '🌱'
+};
+
+export function getCategoryIcon(cat) {
+  return CATEGORY_ICONS[cat] || '🏷️';
+}
+
 export const TAG_CLASSES = {
   salario: 'tag-salario',
+  freelance: 'tag-freelance',
   contafixa: 'tag-contafixa',
   gasto: 'tag-gasto',
   investimento: 'tag-investimento'
@@ -36,6 +65,7 @@ export const TAG_CLASSES = {
 
 export const TAG_LABELS = {
   salario: 'Salário / Renda',
+  freelance: 'Free Lancer',
   contafixa: 'Conta Fixa',
   gasto: 'Gasto Variável',
   investimento: 'Investimento'
@@ -44,6 +74,24 @@ export const TAG_LABELS = {
 export function fmtBRL(v) {
   if (typeof v !== 'number' || isNaN(v)) return 'R$ 0,00';
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+export function getBRLValue(val, moeda = 'BRL') {
+  const num = Number(val) || 0;
+  if (moeda === 'USD' || moeda === 'USDT' || moeda === 'USDC') return num * 5.60;
+  if (moeda === 'EUR') return num * 6.10;
+  return num;
+}
+
+export function fmtCurrencyTx(val, moeda = 'BRL') {
+  const num = Number(val) || 0;
+  if (moeda === 'USD' || moeda === 'USDT' || moeda === 'USDC') {
+    return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  }
+  if (moeda === 'EUR') {
+    return num.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  }
+  return fmtBRL(num);
 }
 
 export function pad(n) {
@@ -70,6 +118,17 @@ export function monthLabel(key) {
     'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
   ];
   return `${names[parseInt(m, 10) - 1]}/${y}`;
+}
+
+export function prevMonthKey(ym) {
+  if (!ym) return '';
+  let [y, m] = ym.split('-').map(Number);
+  m--;
+  if (m < 1) {
+    m = 12;
+    y--;
+  }
+  return `${y}-${pad(m)}`;
 }
 
 export function occurrenceDate(ym, day) {
@@ -191,10 +250,12 @@ export const finance = {
     return transacoes;
   },
 
-  async addTransaction(userEmail, { tipo, data, desc, valor, subcategoria, recorrente, diaVencimento }) {
-    const numericVal = parseFloat(valor);
+  async addTransaction(userEmail, { tipo, data, desc, valor, subcategoria, recorrente, diaVencimento, moeda = 'BRL' }) {
+    let numericVal = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
+    if (isNaN(numericVal)) numericVal = parseFloat(valor);
+
     if (!data || !desc || isNaN(numericVal) || numericVal <= 0) {
-      throw new Error('Preencha os campos obrigatórios corretamente.');
+      throw new Error('Preencha os campos obrigatórios com um valor válido maior que zero.');
     }
 
     const txList = this.getTransactions(userEmail);
@@ -211,6 +272,7 @@ export const finance = {
         tipo,
         desc,
         valor: numericVal,
+        moeda: moeda || 'BRL',
         subcategoria: subcategoria || '',
         diaVencimento: venc,
         criadoEm: curMonthKey()
@@ -225,15 +287,18 @@ export const finance = {
           tipo,
           descricao: desc,
           valor: numericVal,
+          moeda: moeda || 'BRL',
           subcategoria: subcategoria || '',
           dia_vencimento: venc,
-          criado_em: curMonthKey()
+          criado_em: curMonthKey(),
+          user_email: userEmail
         }).then(() => {}).catch(() => {});
       }
     } else {
       const tx = {
         id: newTxId,
         tipo,
+        moeda: moeda || 'BRL',
         subcategoria: subcategoria || '',
         data,
         desc,
@@ -249,27 +314,110 @@ export const finance = {
           subcategoria: subcategoria || '',
           data,
           descricao: desc,
-          valor: numericVal
+          valor: numericVal,
+          moeda: moeda || 'BRL',
+          user_email: userEmail
         }).then(() => {}).catch(() => {});
       }
     }
   },
 
-  async deleteTransaction(userEmail, id) {
-    const list = this.getTransactions(userEmail).filter((t) => t.id !== id);
+  async updateTransaction(userEmail, id, { tipo, data, desc, valor, subcategoria, moeda = 'BRL' }) {
+    let numericVal = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
+    if (isNaN(numericVal)) numericVal = parseFloat(valor);
+
+    if (!data || !desc || isNaN(numericVal) || numericVal <= 0) {
+      throw new Error('Preencha os campos obrigatórios com um valor válido maior que zero.');
+    }
+
+    const list = this.getTransactions(userEmail);
+    const numericId = isNaN(id) ? id : Number(id);
+    const idx = list.findIndex((t) => t.id === id || t.id === numericId);
+    if (idx === -1) throw new Error('Lançamento não encontrado.');
+
+    list[idx] = {
+      ...list[idx],
+      tipo,
+      data,
+      desc: desc.trim(),
+      valor: numericVal,
+      subcategoria: subcategoria || '',
+      moeda: moeda || 'BRL'
+    };
+
     this.setTransactions(userEmail, list);
 
-    if (isSupabaseConfigured && supabase && typeof id === 'string') {
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('transactions').update({
+        tipo,
+        subcategoria: subcategoria || '',
+        data,
+        descricao: desc.trim(),
+        valor: numericVal,
+        moeda: moeda || 'BRL'
+      }).eq('id', id).then(() => {}).catch(() => {});
+    }
+
+    return list[idx];
+  },
+
+  async deleteTransaction(userEmail, id) {
+    const numericId = isNaN(id) ? id : Number(id);
+    const list = this.getTransactions(userEmail).filter((t) => t.id !== id && t.id !== numericId);
+    this.setTransactions(userEmail, list);
+
+    if (isSupabaseConfigured && supabase) {
       supabase.from('transactions').delete().eq('id', id).then(() => {}).catch(() => {});
     }
     return list;
   },
 
-  async deleteRecurring(userEmail, id) {
-    const list = this.getRecurring(userEmail).filter((r) => r.id !== id);
+  async updateRecurring(userEmail, id, { tipo, desc, valor, subcategoria, diaVencimento, moeda = 'BRL' }) {
+    let numericVal = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
+    if (isNaN(numericVal)) numericVal = parseFloat(valor);
+
+    const venc = parseInt(diaVencimento, 10);
+    if (!desc || isNaN(numericVal) || numericVal <= 0 || !venc || venc < 1 || venc > 31) {
+      throw new Error('Preencha os campos da regra recorrente corretamente.');
+    }
+
+    const list = this.getRecurring(userEmail);
+    const numericId = isNaN(id) ? id : Number(id);
+    const idx = list.findIndex((r) => r.id === id || r.id === numericId);
+    if (idx === -1) throw new Error('Regra recorrente não encontrada.');
+
+    list[idx] = {
+      ...list[idx],
+      tipo,
+      desc: desc.trim(),
+      valor: numericVal,
+      subcategoria: subcategoria || '',
+      diaVencimento: venc,
+      moeda: moeda || 'BRL'
+    };
+
     this.setRecurring(userEmail, list);
 
-    if (isSupabaseConfigured && supabase && typeof id === 'string') {
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('recurring_rules').update({
+        tipo,
+        descricao: desc.trim(),
+        valor: numericVal,
+        subcategoria: subcategoria || '',
+        dia_vencimento: venc,
+        moeda: moeda || 'BRL'
+      }).eq('id', id).then(() => {}).catch(() => {});
+    }
+
+    return list[idx];
+  },
+
+  async deleteRecurring(userEmail, id) {
+    const numericId = isNaN(id) ? id : Number(id);
+    const list = this.getRecurring(userEmail).filter((r) => r.id !== id && r.id !== numericId);
+    this.setRecurring(userEmail, list);
+
+    if (isSupabaseConfigured && supabase) {
       supabase.from('recurring_rules').delete().eq('id', id).then(() => {}).catch(() => {});
     }
     return list;
@@ -280,16 +428,30 @@ export const finance = {
     const monthTx = allTx.filter((t) => monthKey(t.data) === targetMonth);
 
     const receita = monthTx
-      .filter((t) => t.tipo === 'salario')
-      .reduce((s, t) => s + t.valor, 0);
+      .filter((t) => t.tipo === 'salario' || t.tipo === 'freelance')
+      .reduce((s, t) => s + getBRLValue(t.valor, t.moeda), 0);
 
-    const despesa = monthTx
-      .filter((t) => t.tipo === 'contafixa' || t.tipo === 'gasto')
-      .reduce((s, t) => s + t.valor, 0);
+    const salario = monthTx
+      .filter((t) => t.tipo === 'salario')
+      .reduce((s, t) => s + getBRLValue(t.valor, t.moeda), 0);
+
+    const freelance = monthTx
+      .filter((t) => t.tipo === 'freelance')
+      .reduce((s, t) => s + getBRLValue(t.valor, t.moeda), 0);
+
+    const contafixa = monthTx
+      .filter((t) => t.tipo === 'contafixa')
+      .reduce((s, t) => s + getBRLValue(t.valor, t.moeda), 0);
+
+    const gastoVariavel = monthTx
+      .filter((t) => t.tipo === 'gasto')
+      .reduce((s, t) => s + getBRLValue(t.valor, t.moeda), 0);
+
+    const despesa = contafixa + gastoVariavel;
 
     const invest = monthTx
       .filter((t) => t.tipo === 'investimento')
-      .reduce((s, t) => s + t.valor, 0);
+      .reduce((s, t) => s + getBRLValue(t.valor, t.moeda), 0);
 
     const saldo = receita - despesa - invest;
 
@@ -319,7 +481,11 @@ export const finance = {
 
     return {
       receita,
+      salario,
+      freelance,
       despesa,
+      contafixa,
+      gastoVariavel,
       invest,
       saldo,
       health,
@@ -327,16 +493,135 @@ export const finance = {
     };
   },
 
-  getMonthlyHistory(userEmail, maxMonths = 6) {
+  getAllAvailableMonths(userEmail) {
+    const allTx = this.getTransactions(userEmail);
+    const set = new Set();
+    set.add(curMonthKey());
+    allTx.forEach((t) => {
+      const k = monthKey(t.data);
+      if (k) set.add(k);
+    });
+    return Array.from(set).sort().reverse();
+  },
+
+  getCategoryBreakdown(userEmail, targetMonth = curMonthKey()) {
+    const allTx = this.getTransactions(userEmail);
+    const monthTx = allTx.filter(
+      (t) => monthKey(t.data) === targetMonth && (t.tipo === 'gasto' || t.tipo === 'contafixa')
+    );
+
+    const breakdown = {};
+    monthTx.forEach((t) => {
+      const cat = t.subcategoria || (t.tipo === 'contafixa' ? 'Conta Fixa Geral' : 'Outros');
+      if (!breakdown[cat]) {
+        breakdown[cat] = { category: cat, total: 0, count: 0, items: [] };
+      }
+      breakdown[cat].total += Number(t.valor);
+      breakdown[cat].count += 1;
+      breakdown[cat].items.push(t);
+    });
+
+    return Object.values(breakdown).sort((a, b) => b.total - a.total);
+  },
+
+  getComparisonData(userEmail, curKey = curMonthKey(), baseKey = null) {
+    const compareKey = baseKey || prevMonthKey(curKey);
+    const curKPIs = this.calculateMonthKPIs(userEmail, curKey);
+    const prevKPIs = this.calculateMonthKPIs(userEmail, compareKey);
+
+    const curCats = this.getCategoryBreakdown(userEmail, curKey);
+    const prevCats = this.getCategoryBreakdown(userEmail, compareKey);
+
+    const curCatsMap = {};
+    curCats.forEach((c) => { curCatsMap[c.category] = c.total; });
+
+    const prevCatsMap = {};
+    prevCats.forEach((c) => { prevCatsMap[c.category] = c.total; });
+
+    const allCatNames = Array.from(new Set([...Object.keys(curCatsMap), ...Object.keys(prevCatsMap)]));
+
+    const categoryChanges = allCatNames.map((name) => {
+      const curVal = curCatsMap[name] || 0;
+      const prevVal = prevCatsMap[name] || 0;
+      const diff = curVal - prevVal; // positive = increased spending, negative = saved/decreased
+      const pct = prevVal > 0 ? Math.round(((curVal - prevVal) / prevVal) * 100) : (curVal > 0 ? 100 : 0);
+
+      let changeType = 'same'; // 'eliminated', 'reduced', 'increased', 'new'
+      if (prevVal > 0 && curVal === 0) changeType = 'eliminated';
+      else if (prevVal === 0 && curVal > 0) changeType = 'new';
+      else if (diff < 0) changeType = 'reduced';
+      else if (diff > 0) changeType = 'increased';
+
+      return {
+        category: name,
+        curVal,
+        prevVal,
+        diff,
+        pct,
+        changeType
+      };
+    });
+
+    // Separated insights
+    const eliminated = categoryChanges.filter((c) => c.changeType === 'eliminated');
+    const reduced = categoryChanges.filter((c) => c.changeType === 'reduced').sort((a, b) => a.diff - b.diff);
+    const increased = categoryChanges.filter((c) => c.changeType === 'increased').sort((a, b) => b.diff - a.diff);
+    const newExpenses = categoryChanges.filter((c) => c.changeType === 'new').sort((a, b) => b.curVal - a.curVal);
+
+    const totalSavingsFromReductions = categoryChanges
+      .filter((c) => c.diff < 0)
+      .reduce((acc, c) => acc + Math.abs(c.diff), 0);
+
+    const totalNewCostFromIncreases = categoryChanges
+      .filter((c) => c.diff > 0)
+      .reduce((acc, c) => acc + c.diff, 0);
+
+    const deltaDespesa = curKPIs.despesa - prevKPIs.despesa;
+    const deltaReceita = curKPIs.receita - prevKPIs.receita;
+    const deltaSaldo = curKPIs.saldo - prevKPIs.saldo;
+    const deltaInvest = curKPIs.invest - prevKPIs.invest;
+
+    return {
+      curKey,
+      curLabel: monthLabel(curKey),
+      prevKey: compareKey,
+      prevLabel: monthLabel(compareKey),
+      curKPIs,
+      prevKPIs,
+      deltaDespesa,
+      deltaReceita,
+      deltaSaldo,
+      deltaInvest,
+      categoryChanges,
+      eliminated,
+      reduced,
+      increased,
+      newExpenses,
+      totalSavingsFromReductions,
+      totalNewCostFromIncreases
+    };
+  },
+
+  getMonthlyHistory(userEmail, maxMonths = 12) {
     const allTx = this.getTransactions(userEmail);
     const monthsMap = {};
 
     allTx.forEach((t) => {
       const k = monthKey(t.data);
-      if (!monthsMap[k]) monthsMap[k] = { receita: 0, despesa: 0, invest: 0 };
-      if (t.tipo === 'salario') monthsMap[k].receita += t.valor;
-      else if (t.tipo === 'contafixa' || t.tipo === 'gasto') monthsMap[k].despesa += t.valor;
-      else if (t.tipo === 'investimento') monthsMap[k].invest += t.valor;
+      if (!monthsMap[k]) monthsMap[k] = { receita: 0, despesa: 0, invest: 0, contafixa: 0, gasto: 0, freelance: 0 };
+      const valBRL = getBRLValue(t.valor, t.moeda);
+      if (t.tipo === 'salario' || t.tipo === 'freelance') {
+        monthsMap[k].receita += valBRL;
+        if (t.tipo === 'freelance') monthsMap[k].freelance += valBRL;
+      } else if (t.tipo === 'contafixa') {
+        monthsMap[k].despesa += valBRL;
+        monthsMap[k].contafixa += valBRL;
+      } else if (t.tipo === 'gasto') {
+        monthsMap[k].despesa += valBRL;
+        monthsMap[k].gasto += valBRL;
+      } else if (t.tipo === 'investimento') {
+        monthsMap[k].invest += valBRL;
+      }
     });
 
     const keys = Object.keys(monthsMap).sort().slice(-maxMonths);
@@ -344,9 +629,44 @@ export const finance = {
       key,
       label: monthLabel(key),
       receita: monthsMap[key].receita,
+      freelance: monthsMap[key].freelance,
       despesa: monthsMap[key].despesa,
+      contafixa: monthsMap[key].contafixa,
+      gasto: monthsMap[key].gasto,
       invest: monthsMap[key].invest,
       saldo: monthsMap[key].receita - monthsMap[key].despesa - monthsMap[key].invest
     }));
+  },
+
+  calculateYearlySavingsProgress(userEmail, targetYear = new Date().getFullYear().toString()) {
+    const profile = storage.get(`perfil_${userEmail}`, {});
+    const targetMeta = Number(profile?.meta) || 0;
+    const allTx = this.getTransactions(userEmail);
+
+    // Filter transactions of the target year
+    const yearTx = allTx.filter((t) => (t.data || '').startsWith(targetYear));
+
+    // Calculate total investments made strictly from investment entries
+    const totalInvestments = yearTx
+      .filter((t) => t.tipo === 'investimento')
+      .reduce((acc, t) => acc + getBRLValue(t.valor, t.moeda), 0);
+
+    // The yearly goal is strictly achieved based on investment entries
+    const totalAccumulated = totalInvestments;
+    const pct = targetMeta > 0 ? Math.min(100, Math.round((totalAccumulated / targetMeta) * 100)) : 0;
+    const milestoneTier = Math.floor(pct / 5) * 5; // e.g. 5, 10, 15...
+    const nextMilestonePct = Math.min(100, milestoneTier + 5);
+    const amountForNextMilestone = targetMeta > 0 ? (nextMilestonePct / 100) * targetMeta : 0;
+    const remainingToNextMilestone = Math.max(0, amountForNextMilestone - totalAccumulated);
+
+    return {
+      targetMeta,
+      totalAccumulated,
+      totalInvestments,
+      pct,
+      milestoneTier,
+      nextMilestonePct,
+      remainingToNextMilestone
+    };
   }
 };

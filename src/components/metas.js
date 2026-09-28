@@ -1,25 +1,7 @@
-/**
- * Metas de Gastos View Component with Calibrated Single-Line Mobile Header
- */
-
 import { budgetService } from '../services/budget.js';
-import { fmtBRL, curMonthKey } from '../services/finance.js';
+import { fmtBRL, curMonthKey, getCategoryIcon } from '../services/finance.js';
 import { openAddBudgetModal } from './budgetModal.js';
 import { showToast } from './toast.js';
-
-function getCatIcon(cat) {
-  const map = {
-    'Alimentação': '🛒',
-    'Lanches/Besteiras': '🍔',
-    'Transporte': '🚗',
-    'Moradia': '🏠',
-    'Lazer': '🎉',
-    'Saúde': '💊',
-    'Educação': '📚',
-    'Outros': '📦'
-  };
-  return map[cat] || '🏷️';
-}
 
 export function renderMetasView(container, user, onDataChanged) {
   const userEmail = user.email;
@@ -127,7 +109,7 @@ export function renderMetasView(container, user, onDataChanged) {
                 <div class="budget-item-card ${item.status}">
                   <div class="budget-item-head">
                     <div style="display:flex; align-items:center; gap:8px;">
-                      <span style="font-size: 18px;">${getCatIcon(item.category)}</span>
+                      <span style="font-size: 18px;">${getCategoryIcon(item.category)}</span>
                       <strong style="font-size: 13.5px;">${item.category}</strong>
                     </div>
                     <div style="display:flex; align-items:center; gap:6px;">

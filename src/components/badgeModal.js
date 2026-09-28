@@ -6,6 +6,7 @@
 
 import confetti from 'canvas-confetti';
 import { showToast } from './toast.js';
+import { SOCIAL_ICONS } from './icons.js';
 
 export function showBadgeModal3D(badge, user) {
   // Remove any existing badge modal
@@ -16,7 +17,7 @@ export function showBadgeModal3D(badge, user) {
   modal.id = 'badge-modal-3d';
   modal.className = 'badge-modal-backdrop';
 
-  const shareText = `🚀 Conquistei a badge "${badge.titulo || badge.nome}" no Me ajuda aí! Gerenciando minhas finanças e subindo de nível financeiro.`;
+  const shareText = `🚀 Conquistei "${badge.titulo || badge.nome}" no Me ajuda aí! Gerenciando minhas finanças e subindo de nível financeiro.`;
   const shareUrl = window.location.origin;
 
   modal.innerHTML = `
@@ -37,18 +38,18 @@ export function showBadgeModal3D(badge, user) {
 
       <div class="badge-share-box">
         <button id="btn-native-share" class="btn btn-primary btn-block" style="margin-bottom: 12px; font-size: 15px; padding: 14px;">
-          <span>🚀</span> Compartilhe sua Conquista
+          <span>🚀</span> Compartilhar Conquista
         </button>
 
         <div class="social-share-row">
           <button class="social-share-btn btn-wa" id="btn-share-wa" title="Compartilhar no WhatsApp">
-            🟢 WhatsApp
-          </button>
-          <button class="social-share-btn btn-x" id="btn-share-x" title="Compartilhar no X (Twitter)">
-            𝕏 Twitter
+            ${SOCIAL_ICONS.whatsapp} WhatsApp
           </button>
           <button class="social-share-btn btn-in" id="btn-share-in" title="Compartilhar no LinkedIn">
-            💼 LinkedIn
+            ${SOCIAL_ICONS.linkedin} LinkedIn
+          </button>
+          <button class="social-share-btn btn-x" id="btn-share-x" title="Copiar texto para Instagram/Redes">
+            ${SOCIAL_ICONS.instagram} Instagram
           </button>
         </div>
       </div>

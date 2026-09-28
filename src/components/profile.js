@@ -4,10 +4,11 @@
 
 import { gamification } from '../services/gamification.js';
 import { storage } from '../services/storage.js';
-import { fmtBRL } from '../services/finance.js';
+import { finance, fmtBRL } from '../services/finance.js';
 import { showToast } from './toast.js';
 import { openProfileModal } from './profileModal.js';
 import { showBadgeModal3D } from './badgeModal.js';
+import { SOCIAL_ICONS } from './icons.js';
 
 export function renderProfile(container, user, onResetOnboarding, onProfileUpdated) {
   const profile = gamification.getProfile(user.email);
@@ -15,11 +16,17 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
 
   const badge = profile.badge;
   const socials = profile.socials || {};
+  const savings = finance.calculateYearlySavingsProgress(user.email);
+
+  let savingsColor = 'var(--brand)';
+  if (savings.pct >= 100) savingsColor = 'var(--green)';
+  else if (savings.pct >= 50) savingsColor = 'var(--brand)';
+  else if (savings.pct >= 20) savingsColor = 'var(--purple)';
 
   container.innerHTML = `
     <div id="tab-perfil" class="view-content-wrapper">
       <!-- Profile Header / Card -->
-      <div class="card" style="margin-bottom: 20px;">
+      <div class="card" style="margin-bottom: 16px;">
         <div class="card-title-row">
           <h3>👤 Seus Dados & Conexões</h3>
           <button id="btn-open-pf-edit" class="btn btn-primary btn-sm">
@@ -44,19 +51,60 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
           </div>
         </div>
 
-        <!-- Social Badges Preview -->
+        <!-- Social Badges Preview with Official Logos -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
-          ${socials.instagram ? `<span class="social-pill">📸 ${socials.instagram}</span>` : ''}
-          ${socials.linkedin ? `<span class="social-pill">💼 LinkedIn</span>` : ''}
-          ${socials.youtube ? `<span class="social-pill">🎥 YouTube</span>` : ''}
-          ${socials.tiktok ? `<span class="social-pill">🎵 TikTok</span>` : ''}
-          ${socials.twitter ? `<span class="social-pill">𝕏 Twitter</span>` : ''}
-          ${!socials.instagram && !socials.linkedin && !socials.youtube && !socials.tiktok && !socials.twitter ? `<span style="font-size: 12px; color: var(--text-muted);">Nenhuma rede social conectada ainda. Clique em Editar para conectar!</span>` : ''}
+          ${socials.instagram ? `<span class="social-pill">${SOCIAL_ICONS.instagram} ${socials.instagram}</span>` : ''}
+          ${socials.linkedin ? `<span class="social-pill">${SOCIAL_ICONS.linkedin} LinkedIn</span>` : ''}
+          ${socials.youtube ? `<span class="social-pill">${SOCIAL_ICONS.youtube} YouTube</span>` : ''}
+          ${socials.tiktok ? `<span class="social-pill">${SOCIAL_ICONS.tiktok} TikTok</span>` : ''}
+          ${socials.whatsapp ? `<span class="social-pill">${SOCIAL_ICONS.whatsapp} WhatsApp</span>` : ''}
+          ${socials.twitter ? `<span class="social-pill">${SOCIAL_ICONS.twitter} Twitter</span>` : ''}
+          ${!socials.instagram && !socials.linkedin && !socials.youtube && !socials.tiktok && !socials.whatsapp && !socials.twitter ? `<span style="font-size: 12px; color: var(--text-muted);">Nenhuma rede social conectada ainda. Clique em Editar para conectar!</span>` : ''}
+        </div>
+      </div>
+
+      <!-- 🎯 Yearly Savings Goal Progress Card -->
+      <div class="card" style="margin-bottom: 16px; background: linear-gradient(135deg, var(--surface-card) 0%, var(--surface-hover) 100%);">
+        <div class="card-title-row">
+          <div>
+            <span class="full-view-kicker">EVOLUÇÃO ANUAL</span>
+            <h3 style="margin-top: 2px; font-size: 16px;">🎯 Meta de Economia para o Ano</h3>
+          </div>
+          <button id="btn-share-savings-goal" class="btn btn-secondary btn-xs" title="Compartilhar progresso da meta">
+            🚀 Compartilhar
+          </button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px;">
+          <div>
+            <span style="font-size: 26px; font-weight: 900; color: ${savingsColor};">
+              ${fmtBRL(savings.totalAccumulated)}
+            </span>
+            <span style="font-size: 13px; font-weight: 700; color: var(--text-muted);">
+              de ${profile.meta ? fmtBRL(profile.meta) : 'R$ 0,00'}
+            </span>
+          </div>
+          <span class="budget-status-pill" style="color: ${savingsColor}; background: ${savingsColor}15; border: 1px solid ${savingsColor}33; font-size: 12px;">
+            ${savings.pct}% conquistado
+          </span>
+        </div>
+
+        <div class="progress-bar" style="height: 8px; margin: 10px 0 8px;">
+          <div class="progress-bar-inner" style="width: ${savings.pct}%; background: ${savingsColor};"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted);">
+          <span>Próximo marco: <strong>${savings.nextMilestonePct}%</strong></span>
+          ${
+            savings.remainingToNextMilestone > 0
+              ? `<span>Faltam <strong>${fmtBRL(savings.remainingToNextMilestone)}</strong> para o próximo marco</span>`
+              : `<span>🎉 Meta anual 100% atingida!</span>`
+          }
         </div>
       </div>
 
       <!-- Badge Card -->
-      <div class="card" style="margin-bottom: 20px;">
+      <div class="card" style="margin-bottom: 16px;">
         <div class="card-title-row">
           <h3>🎖️ Seu Ponto de Partida</h3>
           <button id="btn-share-start-badge" class="btn btn-secondary btn-sm">
@@ -78,61 +126,55 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
         </div>
       </div>
 
-      <!-- Diagnostic Summary Card -->
-      <div class="card" style="margin-bottom: 20px;">
+      <!-- Diagnostic Summary Card (Alinhamento calibrado com 2 colunas) -->
+      <div class="card" style="margin-bottom: 16px;">
         <div class="card-title-row">
           <h3>📋 Respostas do Diagnóstico</h3>
           <button id="btn-redo-onboarding" class="btn btn-secondary btn-sm">Refazer Diagnóstico</button>
         </div>
-        <div>
+        <div class="profile-diagnostic-list">
           <div class="profile-row">
-            <span>Nome ou Apelido</span>
-            <strong>${profile.nome || '—'}</strong>
+            <span class="profile-row-label">Nome ou Apelido</span>
+            <strong class="profile-row-val">${profile.nome || '—'}</strong>
           </div>
           <div class="profile-row">
-            <span>Faixa Etária</span>
-            <strong>${profile.faixa || '—'}</strong>
+            <span class="profile-row-label">Faixa Etária</span>
+            <strong class="profile-row-val">${profile.faixa || '—'}</strong>
           </div>
           <div class="profile-row">
-            <span>Sobra no Fim do Mês (0-10)</span>
-            <strong>${profile.sobra} / 10</strong>
+            <span class="profile-row-label">Sobra no Fim do Mês (0-10)</span>
+            <strong class="profile-row-val">${profile.sobra} / 10</strong>
           </div>
           <div class="profile-row">
-            <span>Maior Dificuldade</span>
-            <strong>${profile.dificuldade || '—'}</strong>
+            <span class="profile-row-label">Maior Dificuldade</span>
+            <strong class="profile-row-val">${profile.dificuldade || '—'}</strong>
           </div>
           <div class="profile-row">
-            <span>Meta de Economia Anual</span>
-            <strong style="color: var(--green);">${profile.meta ? fmtBRL(profile.meta) : '—'}</strong>
+            <span class="profile-row-label">Meta de Economia Anual</span>
+            <strong class="profile-row-val" style="color: var(--green);">${profile.meta ? fmtBRL(profile.meta) : '—'}</strong>
           </div>
           <div class="profile-row">
-            <span>Clareza sobre os Gastos</span>
-            <strong>${profile.sabeParaOnde || '—'}</strong>
+            <span class="profile-row-label">Clareza sobre os Gastos</span>
+            <strong class="profile-row-val">${profile.sabeParaOnde || '—'}</strong>
           </div>
           <div class="profile-row">
-            <span>Conhecimento sobre Investimentos</span>
-            <strong>${profile.sabeInvestir || '—'}</strong>
+            <span class="profile-row-label">Conhecimento sobre Investimentos</span>
+            <strong class="profile-row-val">${profile.sabeInvestir || '—'}</strong>
           </div>
         </div>
       </div>
 
-      <!-- Backup and Data Management Card -->
+      <!-- Backup and Data Management Card (Em breve) -->
       <div class="card">
         <div class="card-title-row">
           <h3>💾 Gerenciamento de Dados & Backup</h3>
+          <span class="budget-status-pill" style="background: var(--brand-light); color: var(--brand); font-weight: 700;">
+            Em breve
+          </span>
         </div>
-        <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px;">
-          Seus dados estão sincronizados na nuvem e salvos no aparelho. Faça backup local em JSON sempre que desejar.
+        <p style="font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5;">
+          Seus dados estão sincronizados de forma segura no dispositivo e na nuvem. A exportação manual e restauração de arquivos em JSON estará disponível em breve nas próximas atualizações.
         </p>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button id="btn-export-data" class="btn btn-secondary">
-            <span>📥</span> Baixar Backup (JSON)
-          </button>
-          <label class="btn btn-secondary" style="cursor: pointer;">
-            <span>📤</span> Restaurar Backup
-            <input id="input-import-data" type="file" accept=".json" style="display: none;">
-          </label>
-        </div>
       </div>
     </div>
   `;
@@ -144,6 +186,20 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
       openProfileModal(user, profile, (up) => {
         if (onProfileUpdated) onProfileUpdated(up);
       });
+    });
+  }
+
+  // Bind share yearly savings goal
+  const btnShareGoal = container.querySelector('#btn-share-savings-goal');
+  if (btnShareGoal) {
+    btnShareGoal.addEventListener('click', () => {
+      showBadgeModal3D({
+        nome: `Meta de Economia: ${savings.pct}% Conquistado!`,
+        titulo: `🎯 ${savings.pct}% da Meta de Economia Anual!`,
+        desc: `Já acumulei ${fmtBRL(savings.totalAccumulated)} da minha meta de ${fmtBRL(savings.targetMeta)} neste ano! Rumo ao topo financeiro!`,
+        icone: '🚀',
+        cor: savingsColor
+      }, user);
     });
   }
 
@@ -160,40 +216,5 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
   if (btnRedo) {
     btnRedo.addEventListener('click', onResetOnboarding);
   }
-
-  // Export Data
-  const btnExport = container.querySelector('#btn-export-data');
-  if (btnExport) {
-    btnExport.addEventListener('click', () => {
-      const dataStr = storage.exportData(user.email);
-      const blob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `backup_meajuda_${user.email}_${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('Backup baixado com sucesso!', 'success');
-    });
-  }
-
-  // Import Data
-  const inputImport = container.querySelector('#input-import-data');
-  if (inputImport) {
-    inputImport.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const ok = storage.importData(user.email, event.target.result);
-        if (ok) {
-          showToast('Dados restaurados com sucesso!', 'success');
-          window.location.reload();
-        } else {
-          showToast('Arquivo de backup inválido.', 'error');
-        }
-      };
-      reader.readAsText(file);
-    });
-  }
 }
+
