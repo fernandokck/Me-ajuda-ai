@@ -94,6 +94,16 @@ export function fmtCurrencyTx(val, moeda = 'BRL') {
   return fmtBRL(num);
 }
 
+export function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export function pad(n) {
   return String(n).padStart(2, '0');
 }
@@ -214,8 +224,10 @@ export const finance = {
         if (localOnly.length > 0) {
           console.log(`[Finance Sync] Enviando ${localOnly.length} transações locais para a nuvem...`);
           for (const item of localOnly) {
+            const validId = (item.id && String(item.id).length === 36 && String(item.id).includes('-')) ? String(item.id) : generateUUID();
+            item.id = validId;
             await supabase.from('transactions').insert({
-              id: String(item.id),
+              id: validId,
               tipo: item.tipo,
               subcategoria: item.subcategoria || '',
               data: item.data,
@@ -267,8 +279,10 @@ export const finance = {
         if (localRecOnly.length > 0) {
           console.log(`[Finance Sync] Enviando ${localRecOnly.length} regras recorrentes locais para a nuvem...`);
           for (const item of localRecOnly) {
+            const validId = (item.id && String(item.id).length === 36 && String(item.id).includes('-')) ? String(item.id) : generateUUID();
+            item.id = validId;
             await supabase.from('recurring_rules').insert({
-              id: String(item.id),
+              id: validId,
               tipo: item.tipo,
               descricao: item.desc,
               valor: item.valor,
@@ -303,7 +317,7 @@ export const finance = {
         );
         if (!exists) {
           transacoes.push({
-            id: String(Date.now() + Math.random()),
+            id: generateUUID(),
             tipo: r.tipo,
             subcategoria: r.subcategoria || '',
             data: occurrenceDate(ym, r.diaVencimento),
@@ -333,7 +347,7 @@ export const finance = {
     }
 
     const txList = this.getTransactions(cleanEmail);
-    const newTxId = String(Date.now());
+    const newTxId = generateUUID();
 
     if (recorrente) {
       const venc = parseInt(diaVencimento, 10);

@@ -36,27 +36,33 @@ export const storage = {
   },
 
   exportData(userEmail) {
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
     const data = {
-      version: '1.0',
+      version: '2.0',
       exportedAt: new Date().toISOString(),
-      user: userEmail,
-      perfil: this.get('perfil_' + userEmail),
-      transacoes: this.get('tx_' + userEmail, []),
-      recorrentes: this.get('rec_' + userEmail, [])
+      user: cleanEmail,
+      perfil: this.get('perfil_' + cleanEmail, null),
+      transacoes: this.get('tx_' + cleanEmail, []),
+      recorrentes: this.get('rec_' + cleanEmail, []),
+      carteira: this.get('wallets_' + cleanEmail, []),
+      budgets: this.get('budgets_' + cleanEmail, {})
     };
     return JSON.stringify(data, null, 2);
   },
 
   importData(userEmail, jsonString) {
     try {
-      const data = JSON.parse(jsonString);
-      if (data.perfil) this.set('perfil_' + userEmail, data.perfil);
-      if (data.transacoes) this.set('tx_' + userEmail, data.transacoes);
-      if (data.recorrentes) this.set('rec_' + userEmail, data.recorrentes);
-      return true;
+      const cleanEmail = (userEmail || '').trim().toLowerCase();
+      const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+      if (data.perfil) this.set('perfil_' + cleanEmail, data.perfil);
+      if (Array.isArray(data.transacoes)) this.set('tx_' + cleanEmail, data.transacoes);
+      if (Array.isArray(data.recorrentes)) this.set('rec_' + cleanEmail, data.recorrentes);
+      if (Array.isArray(data.carteira)) this.set('wallets_' + cleanEmail, data.carteira);
+      if (data.budgets) this.set('budgets_' + cleanEmail, data.budgets);
+      return { success: true, count: (data.transacoes?.length || 0) + (data.carteira?.length || 0) };
     } catch (e) {
       console.error('Import data error:', e);
-      return false;
+      return { success: false, error: e.message };
     }
   }
 };

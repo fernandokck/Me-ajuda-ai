@@ -164,17 +164,33 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
         </div>
       </div>
 
-      <!-- Backup and Data Management Card (Em breve) -->
-      <div class="card">
+      <!-- Backup and Data Management Card -->
+      <div class="card" style="margin-bottom: 24px;">
         <div class="card-title-row">
-          <h3>💾 Gerenciamento de Dados & Backup</h3>
-          <span class="budget-status-pill" style="background: var(--brand-light); color: var(--brand); font-weight: 700;">
-            Em breve
+          <h3>💾 Backup & Sincronização de Dados</h3>
+          <span class="budget-status-pill" style="background: #10b98115; color: var(--green); border: 1px solid #10b98133; font-weight: 700;">
+            Disponível
           </span>
         </div>
-        <p style="font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5;">
-          Seus dados estão sincronizados de forma segura no dispositivo e na nuvem. A exportação manual e restauração de arquivos em JSON estará disponível em breve nas próximas atualizações.
+        <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 16px; line-height: 1.5;">
+          Você pode baixar uma cópia completa dos seus lançamentos locais em arquivo JSON ou restaurar seus dados em outro aparelho e sincronizar diretamente com o Supabase.
         </p>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button id="btn-export-backup" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+              📥 Baixar Backup (JSON)
+            </button>
+            <button id="btn-import-backup" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+              📤 Restaurar Backup
+            </button>
+          </div>
+          <input id="input-import-file" type="file" accept=".json,application/json" style="display: none;" />
+
+          <button id="btn-sync-cloud-now" class="btn btn-primary btn-sm btn-block" style="margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            🔄 Forçar Sincronização com o Supabase
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -215,6 +231,92 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
   const btnRedo = container.querySelector('#btn-redo-onboarding');
   if (btnRedo) {
     btnRedo.addEventListener('click', onResetOnboarding);
+  }
+
+  // Bind Export Backup
+  const btnExport = container.querySelector('#btn-export-backup');
+  if (btnExport) {
+    btnExport.addEventListener('click', () => {
+      const jsonStr = storage.exportData(user.email);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const today = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `me-ajuda-ai-backup-${(user.email || 'user').split('@')[0]}-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Backup baixado com sucesso!', 'success');
+    });
+  }
+
+  // Bind Import Backup
+  const inputImport = container.querySelector('#input-import-file');
+  const btnImport = container.querySelector('#btn-import-backup');
+  if (btnImport && inputImport) {
+    btnImport.addEventListener('click', () => {
+      inputImport.click();
+    });
+
+    inputImport.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const res = storage.importData(user.email, event.target.result);
+          if (res.success) {
+            showToast('Dados restaurados! Sincronizando com a nuvem...', 'success');
+            await Promise.all([
+              finance.syncWithCloud(user),
+              gamification.syncProfileFromCloud(user),
+              walletService.syncWithCloud(user)
+            ]);
+            const updatedProfile = gamification.getProfile(user.email);
+            if (onProfileUpdated && updatedProfile) {
+              onProfileUpdated(updatedProfile);
+            }
+            showToast('Tudo sincronizado com sucesso!', 'success');
+          } else {
+            showToast('Arquivo de backup inválido: ' + (res.error || ''), 'error');
+          }
+        } catch (err) {
+          showToast('Erro ao ler arquivo: ' + err.message, 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  // Bind Force Cloud Sync Now
+  const btnSyncNow = container.querySelector('#btn-sync-cloud-now');
+  if (btnSyncNow) {
+    btnSyncNow.addEventListener('click', async () => {
+      const origText = btnSyncNow.innerHTML;
+      btnSyncNow.disabled = true;
+      btnSyncNow.innerHTML = '⏳ Sincronizando com Supabase...';
+      try {
+        await Promise.all([
+          finance.syncWithCloud(user),
+          gamification.syncProfileFromCloud(user),
+          walletService.syncWithCloud(user)
+        ]);
+        const txs = finance.getTransactions(user.email);
+        const wls = walletService.getWallets(user.email);
+        showToast(`Sincronizado! ${txs.length} lançamentos e ${wls.length} carteiras atualizados.`, 'success');
+        const updatedProfile = gamification.getProfile(user.email);
+        if (onProfileUpdated && updatedProfile) {
+          onProfileUpdated(updatedProfile);
+        }
+      } catch (err) {
+        showToast('Erro ao sincronizar: ' + err.message, 'error');
+      } finally {
+        btnSyncNow.disabled = false;
+        btnSyncNow.innerHTML = origText;
+      }
+    });
   }
 }
 

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- 🤝 Me ajuda aí - Script de Configuração do Supabase (SQL)
+-- 🤝 Me ajuda aí - Script de Correção e Configuração Completa do Supabase (SQL)
 -- Execute este script completo no SQL Editor do seu projeto Supabase:
 -- https://app.supabase.com/project/_/sql
 -- ==============================================================================
@@ -15,14 +15,18 @@ create table if not exists public.transactions (
   valor numeric not null default 0,
   moeda text default 'BRL',
   recorrente_id text,
+  user_id text,
   created_at timestamptz default now()
 );
 
--- Garantir que todas as colunas necessárias existam
-alter table public.transactions add column if not exists user_email text;
-alter table public.transactions add column if not exists moeda text default 'BRL';
-alter table public.transactions add column if not exists subcategoria text default '';
-alter table public.transactions add column if not exists recorrente_id text;
+-- Remover restrições antigas que bloqueavam o salvamento
+alter table if exists public.transactions drop constraint if exists transactions_user_id_fkey;
+alter table if exists public.transactions alter column user_id drop not null;
+alter table if exists public.transactions alter column id type text using id::text;
+alter table if exists public.transactions add column if not exists user_email text;
+alter table if exists public.transactions add column if not exists moeda text default 'BRL';
+alter table if exists public.transactions add column if not exists subcategoria text default '';
+alter table if exists public.transactions add column if not exists recorrente_id text;
 
 -- 2. TABELA DE REGRAS RECORRENTES (recurring_rules)
 create table if not exists public.recurring_rules (
@@ -35,13 +39,18 @@ create table if not exists public.recurring_rules (
   moeda text default 'BRL',
   dia_vencimento integer not null default 1,
   criado_em text,
+  user_id text,
   created_at timestamptz default now()
 );
 
--- Garantir colunas
-alter table public.recurring_rules add column if not exists user_email text;
-alter table public.recurring_rules add column if not exists moeda text default 'BRL';
-alter table public.recurring_rules add column if not exists subcategoria text default '';
+-- Remover restrições antigas em recurring_rules
+alter table if exists public.recurring_rules drop constraint if exists recurring_rules_user_id_fkey;
+alter table if exists public.recurring_rules alter column user_id drop not null;
+alter table if exists public.recurring_rules alter column id type text using id::text;
+alter table if exists public.recurring_rules add column if not exists user_email text;
+alter table if exists public.recurring_rules add column if not exists moeda text default 'BRL';
+alter table if exists public.recurring_rules add column if not exists subcategoria text default '';
+alter table if exists public.recurring_rules alter column criado_em drop not null;
 
 -- 3. TABELA DE CARTEIRA / ALOCAÇÃO DE PATRIMÔNIO (wallets)
 create table if not exists public.wallets (
@@ -54,12 +63,18 @@ create table if not exists public.wallets (
   obs text default '',
   data_inicio text,
   atualizado_em text,
+  user_id text,
   created_at timestamptz default now()
 );
 
--- Garantir colunas
-alter table public.wallets add column if not exists user_email text;
-alter table public.wallets add column if not exists moeda text default 'BRL';
+-- Ajustes na tabela wallets
+alter table if exists public.wallets alter column id type text using id::text;
+alter table if exists public.wallets add column if not exists user_email text;
+alter table if exists public.wallets add column if not exists moeda text default 'BRL';
+alter table if exists public.wallets add column if not exists obs text default '';
+alter table if exists public.wallets add column if not exists data_inicio text;
+alter table if exists public.wallets add column if not exists atualizado_em text;
+alter table if exists public.wallets add column if not exists user_id text;
 
 -- 4. TABELA DE PERFIS / GAMIFICAÇÃO / METAS (profiles)
 create table if not exists public.profiles (
@@ -77,12 +92,11 @@ create table if not exists public.profiles (
   updated_at timestamptz default now()
 );
 
--- Garantir colunas
-alter table public.profiles add column if not exists user_email text;
-alter table public.profiles add column if not exists budgets jsonb default '{}'::jsonb;
+-- Ajustes na tabela profiles
+alter table if exists public.profiles add column if not exists user_email text;
+alter table if exists public.profiles add column if not exists budgets jsonb default '{}'::jsonb;
 
 -- 5. POLÍTICAS DE ACESSO (Row Level Security - RLS)
--- Habilita RLS em todas as tabelas
 alter table public.transactions enable row level security;
 alter table public.recurring_rules enable row level security;
 alter table public.wallets enable row level security;
@@ -95,7 +109,6 @@ drop policy if exists "Permitir tudo em wallets para anon e auth" on public.wall
 drop policy if exists "Permitir tudo em profiles para anon e auth" on public.profiles;
 
 -- Cria políticas universais que permitem Leitura, Inserção, Atualização e Exclusão
--- filtradas por user_email no app para usuários anon (e-mail) e autenticados (Google)
 create policy "Permitir tudo em transactions para anon e auth" on public.transactions
   for all using (true) with check (true);
 
