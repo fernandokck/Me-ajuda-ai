@@ -3,7 +3,10 @@
  */
 
 import { pwa } from '../services/pwa.js';
-import { curMonthKey, monthLabel } from '../services/finance.js';
+import { curMonthKey, monthLabel, finance } from '../services/finance.js';
+import { gamification } from '../services/gamification.js';
+import { walletService } from '../services/wallet.js';
+import { showToast } from './toast.js';
 import { openProfileModal } from './profileModal.js';
 
 export function renderHeader(container, { user, profile, onLogout, onThemeToggle, isDark, onProfileUpdated }) {
@@ -28,6 +31,9 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
         </div>
       </div>
       <div class="header-actions">
+        <button id="btn-header-sync" class="theme-toggle-btn" title="Sincronizar com a nuvem agora" style="font-size: 14px;">
+          🔄
+        </button>
         <button id="btn-pwa-install" class="btn btn-secondary btn-sm hidden">
           <span>📲</span> Instalar App
         </button>
@@ -48,6 +54,37 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
       openProfileModal(user, profile, (updatedProfile) => {
         if (onProfileUpdated) onProfileUpdated(updatedProfile);
       });
+    });
+  }
+
+  // Bind Quick Cloud Sync button
+  const btnHeaderSync = container.querySelector('#btn-header-sync');
+  if (btnHeaderSync) {
+    btnHeaderSync.addEventListener('click', async () => {
+      btnHeaderSync.style.transition = 'transform 0.8s ease';
+      btnHeaderSync.style.transform = 'rotate(360deg)';
+      btnHeaderSync.disabled = true;
+      try {
+        await Promise.all([
+          finance.syncWithCloud(user),
+          gamification.syncProfileFromCloud(user),
+          walletService.syncWithCloud(user)
+        ]);
+        const txs = finance.getTransactions(user.email);
+        const wls = walletService.getWallets(user.email);
+        showToast(`Sincronizado com Supabase! (${txs.length} lançamentos)`, 'success');
+        const updatedProfile = gamification.getProfile(user.email);
+        if (onProfileUpdated && updatedProfile) {
+          onProfileUpdated(updatedProfile);
+        }
+      } catch (err) {
+        showToast('Erro ao sincronizar: ' + err.message, 'error');
+      } finally {
+        setTimeout(() => {
+          btnHeaderSync.style.transform = 'none';
+          btnHeaderSync.disabled = false;
+        }, 800);
+      }
     });
   }
 
