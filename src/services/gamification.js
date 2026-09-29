@@ -194,15 +194,20 @@ export const gamification = {
 
   saveProfile(userEmail, answers, userId = null) {
     const cleanEmail = (userEmail || '').trim().toLowerCase();
+    const prevProfile = this.getProfile(cleanEmail) || {};
     const profile = {
-      nome: answers.nome || cleanEmail.split('@')[0],
-      faixa: answers.faixa || '',
-      sobra: Number(answers.sobra) || 0,
-      dificuldade: answers.dificuldade || '',
-      meta: Number(answers.meta) || 0,
-      sabeParaOnde: answers.sabeParaOnde || '',
-      sabeInvestir: answers.sabeInvestir || '',
-      dataCadastro: new Date().toISOString().slice(0, 10)
+      ...prevProfile,
+      ...answers,
+      nome: answers.nome !== undefined ? answers.nome : (prevProfile.nome || cleanEmail.split('@')[0]),
+      faixa: answers.faixa !== undefined ? answers.faixa : (prevProfile.faixa || ''),
+      sobra: answers.sobra !== undefined ? Number(answers.sobra) : (prevProfile.sobra || 0),
+      dificuldade: answers.dificuldade !== undefined ? answers.dificuldade : (prevProfile.dificuldade || ''),
+      meta: answers.meta !== undefined ? Number(answers.meta) : (prevProfile.meta || 0),
+      sabeParaOnde: answers.sabeParaOnde !== undefined ? answers.sabeParaOnde : (prevProfile.sabeParaOnde || ''),
+      sabeInvestir: answers.sabeInvestir !== undefined ? answers.sabeInvestir : (prevProfile.sabeInvestir || ''),
+      avatarUrl: answers.avatarUrl !== undefined ? answers.avatarUrl : (prevProfile.avatarUrl || ''),
+      socials: answers.socials !== undefined ? answers.socials : (prevProfile.socials || {}),
+      dataCadastro: prevProfile.dataCadastro || new Date().toISOString().slice(0, 10)
     };
     profile.badge = computeBadge(profile);
     storage.set(`perfil_${cleanEmail}`, profile);

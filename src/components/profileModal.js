@@ -1,11 +1,8 @@
-/**
- * Profile Edit & Social Media Connections Modal
- */
-
 import { gamification } from '../services/gamification.js';
 import { storage } from '../services/storage.js';
 import { showToast } from './toast.js';
 import { SOCIAL_ICONS } from './icons.js';
+import { openFinancialReportModal } from './reportModal.js';
 
 export function openProfileModal(user, profile, onSaved) {
   const existing = document.getElementById('profile-edit-modal');
@@ -95,7 +92,17 @@ export function openProfileModal(user, profile, onSaved) {
           <input id="pf-twitter" type="text" class="input" placeholder="Twitter / X (@seu_user)" value="${currentSocials.twitter || ''}">
         </div>
 
-        <div style="display: flex; gap: 12px; margin-top: 24px;">
+        <div style="margin: 18px 0 14px; padding: 12px 14px; background: var(--brand-light); border-radius: var(--radius-sm); border: 1px solid rgba(59, 91, 253, 0.25); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <div>
+            <strong style="font-size: 13px; color: var(--text-main); display: block;">📊 Dossiê Financeiro Executivo</strong>
+            <span style="font-size: 11.5px; color: var(--text-muted);">Baixe seu relatório completo com gráficos em PDF/HTML</span>
+          </div>
+          <button type="button" id="btn-modal-open-report" class="btn btn-primary btn-xs" style="font-weight: 700;">
+            📥 Baixar Relatório
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
           <button type="button" class="btn btn-secondary" id="btn-cancel-pf" style="flex: 1;">Cancelar</button>
           <button type="submit" class="btn btn-primary" style="flex: 2;">Salvar Alterações</button>
         </div>
@@ -124,6 +131,13 @@ export function openProfileModal(user, profile, onSaved) {
   const closeModal = () => modal.remove();
   modal.querySelector('#btn-close-pf').addEventListener('click', closeModal);
   modal.querySelector('#btn-cancel-pf').addEventListener('click', closeModal);
+
+  const btnOpenReport = modal.querySelector('#btn-modal-open-report');
+  if (btnOpenReport) {
+    btnOpenReport.addEventListener('click', () => {
+      openFinancialReportModal(user);
+    });
+  }
 
   // Form Submit
   const form = modal.querySelector('#form-edit-profile');

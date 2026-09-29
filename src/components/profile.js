@@ -1,13 +1,11 @@
-/**
- * Profile & Settings Component
- */
-
 import { gamification } from '../services/gamification.js';
 import { storage } from '../services/storage.js';
 import { finance, fmtBRL } from '../services/finance.js';
+import { walletService } from '../services/wallet.js';
 import { showToast } from './toast.js';
 import { openProfileModal } from './profileModal.js';
 import { showBadgeModal3D } from './badgeModal.js';
+import { openFinancialReportModal } from './reportModal.js';
 import { SOCIAL_ICONS } from './icons.js';
 
 export function renderProfile(container, user, onResetOnboarding, onProfileUpdated) {
@@ -25,6 +23,27 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
 
   container.innerHTML = `
     <div id="tab-perfil" class="view-content-wrapper">
+      <!-- 📊 Executive Financial Report Card -->
+      <div class="card" style="margin-bottom: 16px; border: 1.5px solid rgba(59, 91, 253, 0.35); background: linear-gradient(135deg, var(--surface) 0%, var(--brand-light) 100%);">
+        <div class="card-title-row">
+          <div>
+            <span class="full-view-kicker" style="color: var(--brand);">DOSSIÊ EXECUTIVO</span>
+            <h3 style="margin-top: 2px; font-size: 16.5px;">📊 Relatório Financeiro Completo</h3>
+          </div>
+          <span class="budget-status-pill" style="background: var(--brand); color: #ffffff; font-weight: 800; font-size: 11px;">
+            PDF / HTML
+          </span>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin: 6px 0 16px; line-height: 1.5;">
+          Gere seu dossiê executivo completo com gráficos de desempenho, raio-x do score, metas, histórico multimensal consolidado e plano de ação em 3 fases para imprimir ou salvar em PDF.
+        </p>
+
+        <button id="btn-open-financial-report" class="btn btn-primary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800;">
+          📥 Baixar / Visualizar Relatório Financeiro
+        </button>
+      </div>
+
       <!-- Profile Header / Card -->
       <div class="card" style="margin-bottom: 16px;">
         <div class="card-title-row">
@@ -194,6 +213,14 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
       </div>
     </div>
   `;
+
+  // Bind open financial report modal
+  const btnOpenReport = container.querySelector('#btn-open-financial-report');
+  if (btnOpenReport) {
+    btnOpenReport.addEventListener('click', () => {
+      openFinancialReportModal(user);
+    });
+  }
 
   // Bind edit profile modal
   const btnEditPf = container.querySelector('#btn-open-pf-edit');
