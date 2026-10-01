@@ -19,9 +19,24 @@ let reportScoreRadarChartInstance = null;
 
 export function openFinancialReportModal(user) {
   const existing = document.getElementById('financial-report-modal');
-  if (existing) existing.remove();
+  if (existing) {
+    if (reportEvolutionChartInstance) {
+      reportEvolutionChartInstance.destroy();
+      reportEvolutionChartInstance = null;
+    }
+    if (reportCategoryChartInstance) {
+      reportCategoryChartInstance.destroy();
+      reportCategoryChartInstance = null;
+    }
+    if (reportScoreRadarChartInstance) {
+      reportScoreRadarChartInstance.destroy();
+      reportScoreRadarChartInstance = null;
+    }
+    existing.remove();
+  }
 
-  const userEmail = user.email;
+  const userObj = user || {};
+  const userEmail = (userObj.email || (typeof user === 'string' ? user : '')).trim().toLowerCase();
   const profile = gamification.getProfile(userEmail) || {};
   const badge = profile.badge || { nome: 'Iniciante', icone: '🌱', cor: '#8b5cf6', desc: 'Em início de jornada financeira.' };
   const scoreData = scoreEngine.calculateScore(userEmail);
@@ -131,14 +146,14 @@ export function openFinancialReportModal(user) {
             <div class="report-user-left">
               <div class="report-user-avatar">
                 ${
-                  profile.avatarUrl || user.avatar
-                    ? `<img src="${profile.avatarUrl || user.avatar}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
-                    : `<span>${(profile.nome || user.name || 'U')[0].toUpperCase()}</span>`
+                  profile.avatarUrl || userObj.avatar
+                    ? `<img src="${profile.avatarUrl || userObj.avatar}" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+                    : `<span>${(profile.nome || userObj.name || userEmail || 'U')[0].toUpperCase()}</span>`
                 }
               </div>
               <div>
-                <div class="report-user-name">${profile.nome || user.name || 'Titular da Conta'}</div>
-                <div class="report-user-sub">${user.email} · Faixa: <strong>${profile.faixa || 'Não informada'}</strong> · Cadastrado em: <strong>${profile.dataCadastro || 'Recente'}</strong></div>
+                <div class="report-user-name">${profile.nome || userObj.name || (userEmail ? userEmail.split('@')[0] : 'Titular da Conta')}</div>
+                <div class="report-user-sub">${userEmail || 'Usuário Local'} · Faixa: <strong>${profile.faixa || 'Não informada'}</strong> · Cadastrado em: <strong>${profile.dataCadastro || 'Recente'}</strong></div>
               </div>
             </div>
 
@@ -470,7 +485,7 @@ export function openFinancialReportModal(user) {
             </div>
             <div class="report-diag-card">
               <span class="report-diag-lbl">📊 Sobra no Fim do Mês (0 a 10)</span>
-              <div class="report-diag-val">${profile.sobra} / 10</div>
+              <div class="report-diag-val">${profile.sobra !== undefined && profile.sobra !== null ? profile.sobra : '—'} / 10</div>
             </div>
             <div class="report-diag-card">
               <span class="report-diag-lbl">🔍 Clareza sobre Gastos</span>
@@ -524,7 +539,7 @@ export function openFinancialReportModal(user) {
           </div>
           <div class="report-footer-right">
             <span>Autenticação: <code>${reportCode}</code></span>
-            <span>Página 1 de 1 · Emissão Oficial</span>
+            <span>Dossiê Oficial Consolidado</span>
           </div>
         </div>
 
@@ -586,11 +601,13 @@ export function openFinancialReportModal(user) {
 
   // CSV Export Handler
   modal.querySelector('#btn-export-csv-report').addEventListener('click', () => {
-    exportTransactionsCSV(userEmail, allTx);
+    const currentTx = finance.getTransactions(userEmail);
+    exportTransactionsCSV(userEmail, currentTx);
   });
 
   // Render Chart.js visual charts
   setTimeout(() => {
+    if (!document.getElementById('financial-report-modal')) return;
     renderReportCharts(modal, {
       historyData,
       categoryBreakdown,
@@ -606,7 +623,12 @@ function renderReportCharts(container, { historyData, categoryBreakdown, scoreDa
   // 1. Evolution Multi-Month Chart
   const canvasEvolution = container.querySelector('#reportEvolutionChart');
   if (canvasEvolution) {
-    if (reportEvolutionChartInstance) reportEvolutionChartInstance.destroy();
+    const existingChart = Chart.getChart(canvasEvolution);
+    if (existingChart) existingChart.destroy();
+    if (reportEvolutionChartInstance) {
+      reportEvolutionChartInstance.destroy();
+      reportEvolutionChartInstance = null;
+    }
 
     const labels = historyData.map((d) => d.label);
     const receitas = historyData.map((d) => d.receita);
@@ -676,7 +698,12 @@ function renderReportCharts(container, { historyData, categoryBreakdown, scoreDa
   // 2. Category Breakdown Doughnut Chart
   const canvasCategory = container.querySelector('#reportCategoryChart');
   if (canvasCategory) {
-    if (reportCategoryChartInstance) reportCategoryChartInstance.destroy();
+    const existingCat = Chart.getChart(canvasCategory);
+    if (existingCat) existingCat.destroy();
+    if (reportCategoryChartInstance) {
+      reportCategoryChartInstance.destroy();
+      reportCategoryChartInstance = null;
+    }
 
     const topCats = categoryBreakdown.slice(0, 7);
     const labels = topCats.map((c) => c.category);
@@ -731,7 +758,12 @@ function renderReportCharts(container, { historyData, categoryBreakdown, scoreDa
   // 3. Score Radar / Pillars Chart
   const canvasScoreRadar = container.querySelector('#reportScoreRadarChart');
   if (canvasScoreRadar) {
-    if (reportScoreRadarChartInstance) reportScoreRadarChartInstance.destroy();
+    const existingRadar = Chart.getChart(canvasScoreRadar);
+    if (existingRadar) existingRadar.destroy();
+    if (reportScoreRadarChartInstance) {
+      reportScoreRadarChartInstance.destroy();
+      reportScoreRadarChartInstance = null;
+    }
 
     const factorLabels = scoreData.factors.map((f) => f.label);
     const factorScores = scoreData.factors.map((f) => Math.round((f.points / f.max) * 100));
@@ -802,6 +834,10 @@ function downloadStandaloneHtmlReport(user, profile, data) {
     budgetData
   } = data;
 
+  const userObj = user || {};
+  const userEmail = (userObj.email || (typeof user === 'string' ? user : '')).trim().toLowerCase();
+  const userName = profile?.nome || userObj?.name || (userEmail ? userEmail.split('@')[0] : 'Titular');
+
   const savingsRate = kpis.receita > 0 ? ((kpis.saldo / kpis.receita) * 100).toFixed(1) : '0.0';
   const investRate = kpis.receita > 0 ? ((kpis.invest / kpis.receita) * 100).toFixed(1) : '0.0';
 
@@ -810,7 +846,7 @@ function downloadStandaloneHtmlReport(user, profile, data) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Relatório Financeiro Executivo · ${profile.nome || user.name || 'Me ajuda aí'}</title>
+  <title>Relatório Financeiro Executivo · ${userName}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -976,10 +1012,10 @@ function downloadStandaloneHtmlReport(user, profile, data) {
     <!-- User Strip -->
     <div class="user-strip">
       <div class="user-info">
-        <div class="user-avatar">${(profile.nome || user.name || 'U')[0].toUpperCase()}</div>
+        <div class="user-avatar">${userName[0].toUpperCase()}</div>
         <div>
-          <div style="font-size: 17px; font-weight: 800;">${profile.nome || user.name || 'Titular'}</div>
-          <div style="font-size: 12.5px; color: var(--muted);">${user.email} · Faixa: ${profile.faixa || '—'}</div>
+          <div style="font-size: 17px; font-weight: 800;">${userName}</div>
+          <div style="font-size: 12.5px; color: var(--muted);">${userEmail || 'Usuário Local'} · Faixa: ${profile.faixa || '—'}</div>
         </div>
       </div>
       <div class="chips-row">
@@ -1146,7 +1182,7 @@ function downloadStandaloneHtmlReport(user, profile, data) {
   const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const sanitizedName = (profile.nome || user.name || 'usuario').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const sanitizedName = userName.toLowerCase().replace(/[^a-z0-9]/g, '_');
   a.href = url;
   a.download = `relatorio-financeiro-me-ajuda-ai-${sanitizedName}-${targetMonth}.html`;
   document.body.appendChild(a);
@@ -1174,7 +1210,7 @@ function exportTransactionsCSV(userEmail, allTx) {
       `"${t.data || ''}"`,
       `"${t.tipo || ''}"`,
       `"${t.subcategoria || ''}"`,
-      `"${(t.desc || t.descricao || '').replace(/"/g, '""')}"`,
+      `"${String(t.desc || t.descricao || '').replace(/"/g, '""')}"`,
       `"${t.moeda || 'BRL'}"`,
       `"${Number(t.valor || 0).toFixed(2)}"`,
       `"${t.recorrenteId ? 'Sim' : 'Nao'}"`

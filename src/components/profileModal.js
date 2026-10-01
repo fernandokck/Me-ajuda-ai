@@ -135,6 +135,7 @@ export function openProfileModal(user, profile, onSaved) {
   const btnOpenReport = modal.querySelector('#btn-modal-open-report');
   if (btnOpenReport) {
     btnOpenReport.addEventListener('click', () => {
+      closeModal();
       openFinancialReportModal(user);
     });
   }

@@ -2603,6 +2603,7 @@
     visibility: hidden;
   }
 
+  #app-root,
   .no-print,
   #header-container,
   #dock-container,
@@ -2614,17 +2615,18 @@
 
   /* Make report sheet visible and full width */
   #financial-report-modal,
+  .report-modal-wrapper,
   .report-sheet-container,
   .report-sheet-container * {
     visibility: visible;
   }
 
   #financial-report-modal {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
-    background: transparent !important;
+    background: #ffffff !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
@@ -2633,6 +2635,7 @@
   .report-modal-wrapper {
     max-width: 100% !important;
     margin: 0 !important;
+    padding: 0 !important;
   }
 
   .report-sheet-container {
@@ -2645,14 +2648,45 @@
     print-color-adjust: exact !important;
   }
 
-  .page-break-before {
-    page-break-before: always;
-    break-before: page;
+  /* Force print color override so dark mode does not cause white-on-white text */
+  .report-sheet-container .report-kpi-card,
+  .report-sheet-container .report-dual-card,
+  .report-sheet-container .report-chart-box,
+  .report-sheet-container .report-table-box,
+  .report-sheet-container .report-diag-card,
+  .report-sheet-container .report-plan-card,
+  .report-sheet-container .report-factor-item {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+  }
+
+  .report-sheet-container .report-kpi-val,
+  .report-sheet-container .report-dual-val,
+  .report-sheet-container .report-section-title,
+  .report-sheet-container .report-chart-title,
+  .report-sheet-container .report-table-box-title,
+  .report-sheet-container .report-diag-val,
+  .report-sheet-container .report-user-name,
+  .report-sheet-container .report-table th,
+  .report-sheet-container .report-table td strong {
+    color: #0f172a !important;
+  }
+
+  .report-sheet-container .report-kpi-sub,
+  .report-sheet-container .report-dual-sub,
+  .report-sheet-container .report-chart-sub,
+  .report-sheet-container .report-section-kicker,
+  .report-sheet-container .report-user-sub,
+  .report-sheet-container .report-diag-lbl,
+  .report-sheet-container .report-factor-header span {
+    color: #475569 !important;
   }
 
   .report-section {
     break-inside: avoid;
     page-break-inside: avoid;
+    margin-bottom: 20px;
   }
 }
 
