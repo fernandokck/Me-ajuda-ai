@@ -25,6 +25,9 @@ export const CATEGORIES = {
     'Trabalho',
     'Saúde',
     'Educação',
+    'IA',
+    "APP's",
+    'Religião',
     'Outros'
   ],
   investimento: [
@@ -53,6 +56,10 @@ export const CATEGORY_ICONS = {
   'Trabalho': '💼',
   'Saúde': '💊',
   'Educação': '📚',
+  'IA': '🤖',
+  "APP's": '📲',
+  "APP`s": '📲',
+  'Religião': '⛪',
   'Outros': '📦',
   'Reserva de Emergência': '🛡️',
   'Renda Fixa / CDB / Tesouro': '🏦',
