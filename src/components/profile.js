@@ -2,10 +2,12 @@ import { gamification } from '../services/gamification.js';
 import { storage } from '../services/storage.js';
 import { finance, fmtBRL } from '../services/finance.js';
 import { walletService } from '../services/wallet.js';
+import { subscriptionService } from '../services/subscription.js';
 import { showToast } from './toast.js';
 import { openProfileModal } from './profileModal.js';
 import { showBadgeModal3D } from './badgeModal.js';
 import { openFinancialReportModal } from './reportModal.js';
+import { openUpgradeModal } from './upgradeModal.js';
 import { SOCIAL_ICONS } from './icons.js';
 
 export function renderProfile(container, user, onResetOnboarding, onProfileUpdated) {
@@ -15,6 +17,7 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
   const badge = profile.badge;
   const socials = profile.socials || {};
   const savings = finance.calculateYearlySavingsProgress(user.email);
+  const sub = subscriptionService.getSubscription(user.email);
 
   let savingsColor = 'var(--brand)';
   if (savings.pct >= 100) savingsColor = 'var(--green)';
@@ -23,6 +26,45 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
 
   container.innerHTML = `
     <div id="tab-perfil" class="view-content-wrapper">
+      
+      <!-- ⭐ Subscription Plan Status & Local Testing Switch -->
+      <div class="card" style="margin-bottom: 16px; border: 1.5px solid ${sub.isPro ? 'rgba(245, 158, 11, 0.4)' : 'var(--border)'}; background: ${sub.isPro ? 'linear-gradient(135deg, var(--surface) 0%, var(--amber-bg) 100%)' : 'var(--surface)'};">
+        <div class="card-title-row">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px;">${sub.isPro ? '👑' : '🌱'}</span>
+            <div>
+              <span class="full-view-kicker" style="color: ${sub.isPro ? 'var(--amber)' : 'var(--text-muted)'};">SEU PLANO ATUAL</span>
+              <h3 style="margin-top: 2px; font-size: 16px;">
+                ${sub.isPro ? 'Me ajuda aí PRO (Assinante Ativo)' : 'Plano Gratuito (Free)'}
+              </h3>
+            </div>
+          </div>
+          ${
+            sub.isPro
+              ? `<span class="pro-badge-pill">⭐ PRO ATIVO</span>`
+              : `<button id="btn-profile-open-upgrade" class="btn btn-primary btn-xs" style="font-weight: 800; background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);">⭐ Seja PRO</button>`
+          }
+        </div>
+
+        <p style="font-size: 12.5px; color: var(--text-muted); margin: 6px 0 12px; line-height: 1.45;">
+          ${
+            sub.isPro
+              ? 'Você tem acesso ilimitado a relatórios em PDF/HTML, carteiras multi-moedas, histórico completo e consultoria de IA.'
+              : 'Você está utilizando o plano gratuito. Assine o plano PRO para desbloquear relatórios em PDF, carteiras ilimitadas e análises avançadas.'
+          }
+        </p>
+
+        <!-- Dev Testing Switch Bar -->
+        <div style="background: var(--surface-hover); border: 1px dashed ${sub.isPro ? 'var(--amber)' : 'var(--border)'}; border-radius: var(--radius-sm); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <div style="font-size: 11.5px; color: var(--text-muted);">
+            🧪 <strong>Ambiente de Testes Local:</strong> Alterne entre Gratuito e PRO com 1 clique para testar bloqueios e telas.
+          </div>
+          <button id="btn-toggle-dev-subscription" class="btn btn-secondary btn-xs" style="font-weight: 700; white-space: nowrap;">
+            🔄 Alternar para ${sub.isPro ? 'Plano Gratuito' : '⭐ Plano PRO'}
+          </button>
+        </div>
+      </div>
+
       <!-- 📊 Executive Financial Report Card -->
       <div class="card" style="margin-bottom: 16px; border: 1.5px solid rgba(59, 91, 253, 0.35); background: linear-gradient(135deg, var(--surface) 0%, var(--brand-light) 100%);">
         <div class="card-title-row">
@@ -30,8 +72,8 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
             <span class="full-view-kicker" style="color: var(--brand);">DOSSIÊ EXECUTIVO</span>
             <h3 style="margin-top: 2px; font-size: 16.5px;">📊 Relatório Financeiro Completo</h3>
           </div>
-          <span class="budget-status-pill" style="background: var(--brand); color: #ffffff; font-weight: 800; font-size: 11px;">
-            PDF / HTML
+          <span class="budget-status-pill" style="background: ${sub.isPro ? 'var(--green)' : 'var(--brand)'}; color: #ffffff; font-weight: 800; font-size: 11px;">
+            ${sub.isPro ? '✅ Liberado PRO' : '🔒 Exclusivo PRO'}
           </span>
         </div>
 
@@ -40,7 +82,7 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
         </p>
 
         <button id="btn-open-financial-report" class="btn btn-primary btn-sm btn-block" style="display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800;">
-          📥 Baixar / Visualizar Relatório Financeiro
+          ${sub.isPro ? '📥 Baixar / Visualizar Relatório Financeiro' : '🔒 Baixar Relatório Financeiro (Exclusivo PRO)'}
         </button>
       </div>
 
@@ -214,10 +256,44 @@ export function renderProfile(container, user, onResetOnboarding, onProfileUpdat
     </div>
   `;
 
-  // Bind open financial report modal
+  // Bind Upgrade Button
+  const btnUpgrade = container.querySelector('#btn-profile-open-upgrade');
+  if (btnUpgrade) {
+    btnUpgrade.addEventListener('click', () => {
+      openUpgradeModal(user, {
+        featureName: 'Plano PRO',
+        reason: 'Assine o plano Me ajuda aí PRO para desbloquear todos os recursos e relatórios.',
+        onSubscribed: () => {
+          if (onProfileUpdated) onProfileUpdated(gamification.getProfile(user.email));
+        }
+      });
+    });
+  }
+
+  // Bind Dev Subscription Toggle
+  const btnToggleDev = container.querySelector('#btn-toggle-dev-subscription');
+  if (btnToggleDev) {
+    btnToggleDev.addEventListener('click', () => {
+      const nowPro = subscriptionService.toggleDevSimulatedPro(user.email);
+      showToast(`Ambiente de Testes: Alternado para ${nowPro ? '⭐ Plano PRO' : '🌱 Plano Gratuito'}!`, 'info');
+      if (onProfileUpdated) onProfileUpdated(gamification.getProfile(user.email));
+    });
+  }
+
+  // Bind open financial report modal (with PRO Guard)
   const btnOpenReport = container.querySelector('#btn-open-financial-report');
   if (btnOpenReport) {
     btnOpenReport.addEventListener('click', () => {
+      if (!subscriptionService.canAccess(user.email, 'financial_report')) {
+        openUpgradeModal(user, {
+          featureName: 'Relatório Financeiro Executivo (PDF / HTML)',
+          reason: 'O download e visualização do Dossiê Financeiro Executivo com gráficos completos é um recurso exclusivo para assinantes PRO.',
+          onSubscribed: () => {
+            openFinancialReportModal(user);
+          }
+        });
+        return;
+      }
       openFinancialReportModal(user);
     });
   }

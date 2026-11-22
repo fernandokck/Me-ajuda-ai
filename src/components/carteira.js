@@ -10,7 +10,9 @@ import {
   fmtCurrency,
   calculateDurationText
 } from '../services/wallet.js';
+import { subscriptionService } from '../services/subscription.js';
 import { openWalletModal } from './walletModal.js';
+import { openUpgradeModal } from './upgradeModal.js';
 import { showToast } from './toast.js';
 
 export function renderCarteiraView(container, user, onDataChanged) {
@@ -211,8 +213,21 @@ export function renderCarteiraView(container, user, onDataChanged) {
       </div>
     `;
 
-    // Bind Add modal buttons
+    // Bind Add modal buttons with Subscription Guard
     const openAddHandler = () => {
+      const wallets = walletService.getWallets(userEmail);
+      if (wallets.length >= 1 && !subscriptionService.canAccess(userEmail, 'multi_wallet')) {
+        openUpgradeModal(user, {
+          featureName: 'Múltiplas Carteiras & Moedas Globais',
+          reason: 'No plano gratuito você pode gerenciar 1 carteira. Assine o plano PRO para adicionar contas ilimitadas em Reais, Dólar, Euro e Cripto.',
+          onSubscribed: () => {
+            renderView();
+            if (onDataChanged) onDataChanged();
+          }
+        });
+        return;
+      }
+
       openWalletModal(userEmail, null, () => {
         renderView();
         if (onDataChanged) onDataChanged();

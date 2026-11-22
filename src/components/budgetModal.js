@@ -1,19 +1,22 @@
-/**
- * Budget Category Add / Edit Modal
- */
-
 import { budgetService } from '../services/budget.js';
 import { CATEGORIES, fmtBRL, getCategoryIcon } from '../services/finance.js';
+import { subscriptionService } from '../services/subscription.js';
+import { openUpgradeModal } from './upgradeModal.js';
 import { showToast } from './toast.js';
+import { attachCurrencyMask, formatRawToCurrency, parseFormattedCurrency } from '../utils/mask.js';
 
 export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
   const existing = document.getElementById('budget-add-modal');
   if (existing) existing.remove();
 
   const currentBudgets = budgetService.getBudgets(userEmail);
-  const categories = CATEGORIES.gasto;
+  const categories = [...CATEGORIES.gasto];
+  if (defaultCategory && !categories.includes(defaultCategory)) {
+    categories.push(defaultCategory);
+  }
   const initialCategory = defaultCategory || categories[0];
   const initialLimit = currentBudgets[initialCategory] || '';
+  const initialFormatted = initialLimit ? formatRawToCurrency(Math.round(Number(initialLimit) * 100), 'BRL') : '';
 
   const modal = document.createElement('div');
   modal.id = 'budget-add-modal';
@@ -50,15 +53,17 @@ export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
           <label for="bm-input-limit">Meta de Gasto Mensal (R$)</label>
           <input 
             id="bm-input-limit" 
-            type="number" 
-            step="10" 
-            min="1" 
+            type="text" 
+            inputmode="numeric" 
             class="input" 
-            placeholder="Ex: 300,00" 
-            value="${initialLimit}" 
+            placeholder="0,00" 
+            value="${initialFormatted}" 
             required 
             autofocus
           >
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+            Digite livremente qualquer valor desejado para a meta.
+          </div>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -77,9 +82,18 @@ export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
   const selectCat = modal.querySelector('#bm-select-cat');
   const inputLimit = modal.querySelector('#bm-input-limit');
 
+  // Attach currency mask for completely free numerical/decimal input
+  const maskCtrl = attachCurrencyMask(inputLimit, () => 'BRL');
+
   selectCat.addEventListener('change', () => {
     const selected = selectCat.value;
-    inputLimit.value = currentBudgets[selected] || '';
+    const existingVal = currentBudgets[selected];
+    if (existingVal !== undefined && existingVal !== null && existingVal !== '') {
+      inputLimit.value = formatRawToCurrency(Math.round(Number(existingVal) * 100), 'BRL');
+    } else {
+      inputLimit.value = '';
+    }
+    if (maskCtrl) maskCtrl.reformat();
   });
 
   const closeModal = () => modal.remove();
@@ -91,10 +105,32 @@ export function openAddBudgetModal(userEmail, defaultCategory = '', onSaved) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const category = selectCat.value;
-    const limit = parseFloat(inputLimit.value);
+
+    let limit = maskCtrl ? maskCtrl.getNumericValue() : parseFormattedCurrency(inputLimit.value, 'BRL');
+    if (isNaN(limit) || limit <= 0) {
+      const raw = inputLimit.value.replace(/[^\d.,]/g, '').replace(',', '.');
+      limit = parseFloat(raw);
+    }
 
     if (isNaN(limit) || limit <= 0) {
       showToast('Informe um valor de meta válido.', 'error');
+      return;
+    }
+
+    // Check limit if adding new category budget
+    const activeBudgetCats = Object.keys(currentBudgets);
+    const isNewCategory = !currentBudgets[category];
+    if (isNewCategory && activeBudgetCats.length >= 2 && !subscriptionService.canAccess(userEmail, 'unlimited_budgets')) {
+      closeModal();
+      openUpgradeModal({ email: userEmail }, {
+        featureName: 'Metas de Gastos Ilimitadas',
+        reason: 'No plano gratuito você pode definir metas para até 2 categorias. Assine o plano PRO para metas ilimitadas e alertas em tempo real.',
+        onSubscribed: () => {
+          budgetService.setCategoryBudget(userEmail, category, limit);
+          showToast(`Meta de ${category} definida para ${fmtBRL(limit)}!`, 'success');
+          if (onSaved) onSaved();
+        }
+      });
       return;
     }
 

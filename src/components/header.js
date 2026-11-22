@@ -1,11 +1,9 @@
-/**
- * Header Component with Clickable Avatar Profile Modal Trigger
- */
-
 import { pwa } from '../services/pwa.js';
 import { curMonthKey, monthLabel, finance } from '../services/finance.js';
 import { gamification } from '../services/gamification.js';
 import { walletService } from '../services/wallet.js';
+import { subscriptionService } from '../services/subscription.js';
+import { openUpgradeModal } from './upgradeModal.js';
 import { showToast } from './toast.js';
 import { openProfileModal } from './profileModal.js';
 
@@ -14,6 +12,7 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
   const userName = profile?.nome || user?.name || user?.email;
   const avatarUrl = profile?.avatarUrl || user?.avatar || '';
   const currentMonthStr = monthLabel(curMonthKey());
+  const sub = subscriptionService.getSubscription(user.email);
 
   container.innerHTML = `
     <header class="top-header">
@@ -26,11 +25,23 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
           }
         </div>
         <div class="header-user-info">
-          <h2>${userName} <span class="profile-edit-indicator">✏️</span></h2>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <h2 style="margin: 0;">${userName}</h2>
+            ${sub.isPro ? `<span class="pro-badge-pill" style="font-size: 9px; padding: 1px 6px;">⭐ PRO</span>` : ''}
+          </div>
           <span>Painel de ${currentMonthStr}</span>
         </div>
       </div>
       <div class="header-actions">
+        ${
+          !sub.isPro
+            ? `
+          <button id="btn-header-upgrade" class="btn btn-primary btn-xs" style="font-weight: 800; background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);" title="Desbloquear recursos PRO">
+            ⭐ Seja PRO
+          </button>
+        `
+            : ''
+        }
         <button id="btn-header-sync" class="theme-toggle-btn" title="Sincronizar com a nuvem agora" style="font-size: 14px;">
           🔄
         </button>
@@ -46,6 +57,19 @@ export function renderHeader(container, { user, profile, onLogout, onThemeToggle
       </div>
     </header>
   `;
+
+  // Bind Upgrade Button
+  const btnUpgrade = container.querySelector('#btn-header-upgrade');
+  if (btnUpgrade) {
+    btnUpgrade.addEventListener('click', () => {
+      openUpgradeModal(user, {
+        featureName: 'Plano PRO',
+        onSubscribed: () => {
+          if (onProfileUpdated) onProfileUpdated(gamification.getProfile(user.email));
+        }
+      });
+    });
+  }
 
   // Bind avatar click to open profile modal
   const btnOpenProfile = container.querySelector('#btn-open-profile-header');

@@ -89,12 +89,22 @@ create table if not exists public.profiles (
   sabe_investir text,
   badge jsonb,
   budgets jsonb default '{}'::jsonb,
+  subscription_tier text default 'free',
+  subscription_status text default 'none',
+  subscription_id text,
+  subscription_expires_at timestamptz,
+  customer_id text,
   updated_at timestamptz default now()
 );
 
 -- Ajustes na tabela profiles
 alter table if exists public.profiles add column if not exists user_email text;
 alter table if exists public.profiles add column if not exists budgets jsonb default '{}'::jsonb;
+alter table if exists public.profiles add column if not exists subscription_tier text default 'free';
+alter table if exists public.profiles add column if not exists subscription_status text default 'none';
+alter table if exists public.profiles add column if not exists subscription_id text;
+alter table if exists public.profiles add column if not exists subscription_expires_at timestamptz;
+alter table if exists public.profiles add column if not exists customer_id text;
 
 -- 5. POLÍTICAS DE ACESSO (Row Level Security - RLS)
 alter table public.transactions enable row level security;

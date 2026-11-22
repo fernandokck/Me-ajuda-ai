@@ -1245,6 +1245,67 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.full-view-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.full-view-cat-wrap {
+  width: 100%;
+}
+
+.full-view-cat-select {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.full-view-cat-select:focus {
+  border-color: var(--brand);
+}
+
+.full-view-summary-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, var(--surface-card) 0%, var(--surface-hover) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  color: var(--text-main);
+  animation: fadeIn 0.2s ease;
+}
+
+.full-view-summary-box.hidden {
+  display: none !important;
+}
+
+.full-view-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.full-view-summary-val {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .filter-pill-btn {
   padding: 5px 10px;
   border-radius: var(--radius-full);
@@ -2689,4 +2750,248 @@
     margin-bottom: 20px;
   }
 }
+
+/* ==========================================================================
+   ⭐ Upgrade / Paywall Modal & PRO Badges Styles
+   ========================================================================== */
+
+.upgrade-backdrop {
+  align-items: center !important;
+  padding: 20px 14px !important;
+  overflow-y: auto !important;
+  background: rgba(15, 23, 42, 0.86) !important;
+  backdrop-filter: blur(10px);
+}
+
+.upgrade-modal-card {
+  background: var(--surface);
+  border: 1.5px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 680px;
+  padding: 32px 28px 24px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.upgrade-hero-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.upgrade-crown-icon {
+  font-size: 38px;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.4));
+}
+
+.upgrade-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--amber);
+  letter-spacing: 0.08em;
+  display: block;
+}
+
+.upgrade-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  margin: 4px 0 8px;
+}
+
+.upgrade-subtitle {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.45;
+}
+
+/* Benefits Grid */
+.upgrade-benefits-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .upgrade-benefits-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.upgrade-benefit-item {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.upgrade-benefit-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.upgrade-benefit-item strong {
+  font-size: 13px;
+  color: var(--text-main);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.upgrade-benefit-item p {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Pricing Grid */
+.upgrade-pricing-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 600px) {
+  .upgrade-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.upgrade-plan-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.upgrade-plan-card.featured {
+  border-color: var(--amber);
+  background: linear-gradient(180deg, var(--amber-bg) 0%, var(--surface) 100%);
+  box-shadow: 0 8px 25px rgba(245, 158, 11, 0.15);
+}
+
+.upgrade-popular-badge {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.upgrade-plan-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.upgrade-plan-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.price-currency {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.price-big {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+}
+
+.price-cents {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.price-period {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.upgrade-plan-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.upgrade-cta-btn {
+  margin-top: auto;
+  font-weight: 800;
+}
+
+/* Local Testing Box */
+.upgrade-dev-box {
+  background: var(--surface-hover);
+  border: 1px dashed var(--amber);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+/* Guarantee Footer */
+.upgrade-guarantee-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* Pro Badges */
+.pro-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10.5px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+  letter-spacing: 0.03em;
+}
+
 
