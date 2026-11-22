@@ -19,6 +19,7 @@ import { gamification } from '../services/gamification.js';
 import { pwa } from '../services/pwa.js';
 import { storage } from '../services/storage.js';
 import { walletService, fmtCurrency } from '../services/wallet.js';
+import { cryptoService } from '../services/crypto.js';
 import { attachCurrencyMask } from '../utils/mask.js';
 import { showToast } from './toast.js';
 import { showBadgeModal3D } from './badgeModal.js';
@@ -177,6 +178,9 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
                   </select>
                 </div>
               </div>
+
+              <!-- Live Crypto Ticker for Investimento > Criptomoedas -->
+              <div class="crypto-dash-ticker hidden" id="dash-crypto-ticker"></div>
 
               <div class="check-row">
                 <input type="checkbox" id="tx-recorrente">
@@ -504,6 +508,42 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
     if (currencyMask) currencyMask.reformat();
   }
 
+  const cryptoTicker = container.querySelector('#dash-crypto-ticker');
+
+  function updateCryptoTicker() {
+    if (!cryptoTicker) return;
+    const isCrypto = selectTipo.value === 'investimento' && selectSubcat.value === 'Criptomoedas';
+    if (!isCrypto) {
+      cryptoTicker.classList.add('hidden');
+      return;
+    }
+
+    const prices = cryptoService.getPrices();
+    const topCryptos = ['BTC', 'ETH', 'SOL', 'USDT', 'XRP'];
+    cryptoTicker.classList.remove('hidden');
+    cryptoTicker.innerHTML = `
+      <span style="font-size: 11px; font-weight: 800; color: var(--brand); white-space: nowrap; margin-right: 4px;">
+        🪙 Mercado Hoje:
+      </span>
+      ${topCryptos
+        .map((sym) => {
+          const item = prices[sym];
+          if (!item) return '';
+          const p = item.priceBRL >= 100 ? Math.round(item.priceBRL).toLocaleString('pt-BR') : item.priceBRL.toFixed(2);
+          const chg = item.change24h || 0;
+          return `
+          <span class="crypto-ticker-pill" title="${item.name}: R$ ${p}">
+            <strong>${sym}</strong> R$ ${p}
+            <span class="crypto-change-pill ${chg >= 0 ? 'up' : 'down'}" style="font-size: 9.5px; padding: 1px 4px;">
+              ${chg >= 0 ? '+' : ''}${chg}%
+            </span>
+          </span>
+        `;
+        })
+        .join('')}
+    `;
+  }
+
   selectTipo.addEventListener('change', () => {
     const val = selectTipo.value;
     if (val === 'gasto' || val === 'contafixa') {
@@ -521,6 +561,11 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
       if (rowMoedaInvest) rowMoedaInvest.classList.add('hidden');
     }
     updateCurrencyLabelsAndMask();
+    updateCryptoTicker();
+  });
+
+  selectSubcat.addEventListener('change', () => {
+    updateCryptoTicker();
   });
 
   if (selectMoeda) {

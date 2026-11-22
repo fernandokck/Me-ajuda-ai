@@ -75,6 +75,9 @@ alter table if exists public.wallets add column if not exists obs text default '
 alter table if exists public.wallets add column if not exists data_inicio text;
 alter table if exists public.wallets add column if not exists atualizado_em text;
 alter table if exists public.wallets add column if not exists user_id text;
+alter table if exists public.wallets add column if not exists crypto_symbol text;
+alter table if exists public.wallets add column if not exists crypto_qty numeric;
+alter table if exists public.wallets add column if not exists auto_update_price boolean default true;
 
 -- 4. TABELA DE PERFIS / GAMIFICAÇÃO / METAS (profiles)
 create table if not exists public.profiles (

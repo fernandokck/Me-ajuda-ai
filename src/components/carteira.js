@@ -1,7 +1,7 @@
 /**
  * Carteira View Component (Wallet, Assets & Allocations)
  * Displays consolidated balances across multi-currencies (BRL, USD, EUR, USDT, USDC),
- * allocation time tracking, and interactive management.
+ * real-time crypto market price tracking with 24h variation, allocation time tracking, and interactive management.
  */
 
 import {
@@ -10,6 +10,7 @@ import {
   fmtCurrency,
   calculateDurationText
 } from '../services/wallet.js';
+import { cryptoService } from '../services/crypto.js';
 import { subscriptionService } from '../services/subscription.js';
 import { openWalletModal } from './walletModal.js';
 import { openUpgradeModal } from './upgradeModal.js';
@@ -36,6 +37,8 @@ export function renderCarteiraView(container, user, onDataChanged) {
       reserva: list.filter((w) => w.tipo === 'reserva').length
     };
 
+    const hasCrypto = list.some((w) => w.tipo === 'cripto');
+
     container.innerHTML = `
       <div id="tab-carteira" class="view-content-wrapper">
         <!-- Header Hero Card -->
@@ -47,13 +50,24 @@ export function renderCarteiraView(container, user, onDataChanged) {
                 💼 Minha Carteira
               </h2>
               <div style="font-size: 12.5px; color: var(--text-muted);">
-                Acompanhe onde seu dinheiro está alocado, seus saldos em moeda estrangeira e o tempo de cada aplicação.
+                Acompanhe onde seu dinheiro está alocado, cotações de cripto em tempo real e tempo de cada aplicação.
               </div>
             </div>
 
-            <button id="btn-add-wallet-hero" class="btn btn-primary btn-sm">
-              <span>➕</span> Adicionar Conta / Aplicação
-            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              ${
+                hasCrypto
+                  ? `
+                <button id="btn-refresh-crypto" class="btn btn-secondary btn-sm" title="Puxar preços atualizados das criptomoedas no mercado">
+                  <span id="refresh-crypto-icon">🔄</span> Cotações Cripto
+                </button>
+              `
+                  : ''
+              }
+              <button id="btn-add-wallet-hero" class="btn btn-primary btn-sm">
+                <span>➕</span> Adicionar Conta / Aplicação
+              </button>
+            </div>
           </div>
 
           <!-- Currency KPI Summary Grid -->
@@ -138,7 +152,7 @@ export function renderCarteiraView(container, user, onDataChanged) {
                 Nenhuma conta ou aplicação cadastrada
               </h4>
               <p style="font-size: 12px; color: var(--text-muted); max-width: 360px; margin: 0 auto 14px; line-height: 1.4;">
-                Adicione suas contas do Nubank, Binance, Inter, caixinhas ou carteiras cripto em dólar para saber exatamente onde e há quanto tempo está seu dinheiro.
+                Adicione suas contas do Nubank, Binance, Inter, caixinhas ou carteiras cripto com cotação automática para acompanhar seu patrimônio em tempo real.
               </p>
               <button id="btn-add-wallet-empty" class="btn btn-primary">
                 <span>➕</span> Adicionar Minha Primeira Conta
@@ -152,6 +166,8 @@ export function renderCarteiraView(container, user, onDataChanged) {
                   const typeObj = WALLET_TYPES.find((t) => t.id === w.tipo) || { icon: '💼', label: 'Aplicação' };
                   const durationText = calculateDurationText(w.dataInicio);
                   const isDollar = w.moeda === 'USD' || w.moeda === 'USDT' || w.moeda === 'USDC';
+                  const isCrypto = w.tipo === 'cripto';
+                  const holding = isCrypto && w.cryptoSymbol ? cryptoService.calculateHoldingValue(w.cryptoSymbol, w.cryptoQty || 0, w.moeda) : null;
 
                   return `
                   <div class="wallet-card-item">
@@ -173,8 +189,36 @@ export function renderCarteiraView(container, user, onDataChanged) {
                     </div>
 
                     <div class="wallet-card-body">
+                      <!-- Detalhes de Criptomoeda ao Vivo -->
+                      ${
+                        isCrypto && w.cryptoSymbol
+                          ? `
+                        <div class="crypto-card-details">
+                          <div class="crypto-card-row">
+                            <span class="crypto-tag-pill">🪙 ${w.cryptoSymbol}</span>
+                            ${w.cryptoQty ? `<span style="font-size: 12px; font-weight: 800; color: var(--text-main);">${w.cryptoQty} ${w.cryptoSymbol}</span>` : ''}
+                          </div>
+                          ${
+                            holding
+                              ? `
+                            <div class="crypto-price-subrow">
+                              <span style="font-size: 10.5px; color: var(--text-muted);">
+                                Cotação: <strong>${fmtCurrency(w.moeda === 'USD' ? holding.unitPriceUSD : holding.unitPriceBRL, w.moeda)}</strong>
+                              </span>
+                              <span class="crypto-change-pill ${holding.change24h >= 0 ? 'up' : 'down'}">
+                                ${holding.change24h >= 0 ? '▲ +' : '▼ '}${holding.change24h}% (24h)
+                              </span>
+                            </div>
+                          `
+                              : ''
+                          }
+                        </div>
+                      `
+                          : ''
+                      }
+
                       <div class="wallet-balance-row">
-                        <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">Saldo Disponível:</span>
+                        <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">Saldo Atual:</span>
                         <strong class="wallet-balance-val ${isDollar ? 'dollar' : ''}">
                           ${fmtCurrency(w.saldo, w.moeda)}
                         </strong>
@@ -243,6 +287,28 @@ export function renderCarteiraView(container, user, onDataChanged) {
     const btnEmpty = container.querySelector('#btn-add-wallet-empty');
     if (btnEmpty) btnEmpty.addEventListener('click', openAddHandler);
 
+    // Bind Refresh Crypto Prices button
+    const btnRefreshCrypto = container.querySelector('#btn-refresh-crypto');
+    if (btnRefreshCrypto) {
+      btnRefreshCrypto.addEventListener('click', async () => {
+        btnRefreshCrypto.disabled = true;
+        const icon = btnRefreshCrypto.querySelector('#refresh-crypto-icon');
+        if (icon) icon.textContent = '⏳';
+        try {
+          await cryptoService.fetchMarketPrices(true);
+          walletService.updateCryptoBalancesWithLiveMarket(userEmail);
+          showToast('Cotações de mercado atualizadas ao vivo!', 'success');
+          renderView();
+          if (onDataChanged) onDataChanged();
+        } catch (err) {
+          showToast('Não foi possível atualizar as cotações agora.', 'error');
+        } finally {
+          btnRefreshCrypto.disabled = false;
+          if (icon) icon.textContent = '🔄';
+        }
+      });
+    }
+
     // Bind Filter pills
     container.querySelectorAll('.filter-pill-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -274,6 +340,16 @@ export function renderCarteiraView(container, user, onDataChanged) {
         renderView();
         if (onDataChanged) onDataChanged();
       });
+    });
+  }
+
+  // Pre-fetch crypto prices on mount if user has any crypto holding
+  const initialWallets = walletService.getWallets(userEmail);
+  if (initialWallets.some((w) => w.tipo === 'cripto')) {
+    cryptoService.fetchMarketPrices().then(() => {
+      walletService.updateCryptoBalancesWithLiveMarket(userEmail);
+      const el = document.getElementById('tab-carteira');
+      if (el) renderView();
     });
   }
 
