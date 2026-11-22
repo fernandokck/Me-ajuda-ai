@@ -173,10 +173,12 @@ export function renderCarteiraView(container, user, onDataChanged) {
                   <div class="wallet-card-item">
                     <div class="wallet-card-head">
                       <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="wallet-type-icon">${typeObj.icon}</span>
+                        <span class="wallet-type-icon ${isCrypto && holding?.image ? 'crypto-icon-wrap' : ''}">
+                          ${isCrypto && holding?.image ? `<img src="${holding.image}" alt="${w.cryptoSymbol}" class="crypto-coin-avatar">` : typeObj.icon}
+                        </span>
                         <div>
                           <strong style="font-size: 14.5px; color: var(--text-main); display: block;">${w.nome}</strong>
-                          <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">${typeObj.label}</span>
+                          <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">${isCrypto && holding ? holding.name : typeObj.label}</span>
                         </div>
                       </div>
 
@@ -195,7 +197,10 @@ export function renderCarteiraView(container, user, onDataChanged) {
                           ? `
                         <div class="crypto-card-details">
                           <div class="crypto-card-row">
-                            <span class="crypto-tag-pill">🪙 ${w.cryptoSymbol}</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                              ${holding?.image ? `<img src="${holding.image}" alt="${w.cryptoSymbol}" class="crypto-coin-mini-avatar">` : ''}
+                              <span class="crypto-tag-pill">${w.cryptoSymbol}</span>
+                            </div>
                             ${w.cryptoQty ? `<span style="font-size: 12px; font-weight: 800; color: var(--text-main);">${w.cryptoQty} ${w.cryptoSymbol}</span>` : ''}
                           </div>
                           ${

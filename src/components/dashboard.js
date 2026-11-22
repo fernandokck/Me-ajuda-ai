@@ -533,6 +533,7 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
           const chg = item.change24h || 0;
           return `
           <span class="crypto-ticker-pill" title="${item.name}: R$ ${p}">
+            ${item.image ? `<img src="${item.image}" alt="${sym}" class="crypto-ticker-avatar">` : ''}
             <strong>${sym}</strong> R$ ${p}
             <span class="crypto-change-pill ${chg >= 0 ? 'up' : 'down'}" style="font-size: 9.5px; padding: 1px 4px;">
               ${chg >= 0 ? '+' : ''}${chg}%

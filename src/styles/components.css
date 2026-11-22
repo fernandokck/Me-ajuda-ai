@@ -1963,8 +1963,49 @@
 }
 
 /* ==========================================================================
-   Crypto Realtime Market Quotes & Badges
+   Crypto Realtime Market Quotes & Badges (CoinGecko Top 100)
    ========================================================================== */
+.crypto-coin-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.crypto-coin-mini-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.crypto-ticker-avatar {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.crypto-icon-wrap {
+  overflow: hidden;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crypto-icon-wrap img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
 .crypto-market-quote-box {
   background: var(--surface);
   border: 1px solid var(--border);

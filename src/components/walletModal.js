@@ -86,12 +86,12 @@ export function openWalletModal(userEmail, walletToEdit = null, onSaved) {
 
           <div class="form-row">
             <div class="form-field-wrapper">
-              <label for="wm-select-crypto-asset">Criptomoeda</label>
+              <label for="wm-select-crypto-asset">Criptomoeda (Top 100 CoinGecko)</label>
               <select id="wm-select-crypto-asset" class="input">
                 ${SUPPORTED_CRYPTOS.map(
                   (c) => `
                   <option value="${c.symbol}" ${c.symbol === selectedCrypto ? 'selected' : ''}>
-                    ${c.icon} ${c.name} (${c.symbol})
+                    #${c.rank} ${c.name} (${c.symbol})
                   </option>
                 `
                 ).join('')}
@@ -214,19 +214,24 @@ export function openWalletModal(userEmail, walletToEdit = null, onSaved) {
     ` : '';
 
     boxCryptoQuote.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-        <div>
-          <span style="font-size: 11px; color: var(--text-muted);">Cotação do dia:</span>
-          <strong style="font-size: 12.5px; color: var(--text-main); margin-left: 4px;">1 ${sym} = ${unitPriceFmt}</strong>
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <img src="${holding.image}" alt="${holding.symbol}" class="crypto-coin-avatar">
+          <div>
+            <div style="font-weight: 800; font-size: 13.5px; color: var(--text-main);">${holding.name} (${holding.symbol})</div>
+            <div style="font-size: 11px; color: var(--text-muted);">
+              Cotação do dia: <strong>${unitPriceFmt}</strong>
+            </div>
+          </div>
         </div>
         ${changeBadge}
       </div>
       ${
         qty > 0
           ? `
-        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 11.5px; color: var(--text-muted);">${qty} ${sym} equivalem a:</span>
-          <strong style="font-size: 14px; color: var(--green);">${totalFmt}</strong>
+          <strong style="font-size: 15px; color: var(--green); font-weight: 900;">${totalFmt}</strong>
         </div>
       `
           : ''
