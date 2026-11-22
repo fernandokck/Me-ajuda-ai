@@ -84,10 +84,10 @@ export function openWalletModal(userEmail, walletToEdit = null, onSaved) {
             <span>🪙</span> Cotação de Mercado em Tempo Real
           </div>
 
-          <div class="form-row">
-            <div class="form-field-wrapper">
-              <label for="wm-select-crypto-asset">Criptomoeda (Top 100 CoinGecko)</label>
-              <select id="wm-select-crypto-asset" class="input">
+          <div class="form-row form-row-crypto">
+            <div class="form-field-wrapper" style="min-width: 0;">
+              <label for="wm-select-crypto-asset" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Criptomoedas</label>
+              <select id="wm-select-crypto-asset" class="input" style="width: 100%; text-overflow: ellipsis;">
                 ${SUPPORTED_CRYPTOS.map(
                   (c) => `
                   <option value="${c.symbol}" ${c.symbol === selectedCrypto ? 'selected' : ''}>
@@ -98,8 +98,8 @@ export function openWalletModal(userEmail, walletToEdit = null, onSaved) {
               </select>
             </div>
 
-            <div class="form-field-wrapper">
-              <label for="wm-input-crypto-qty">Quantidade de Moedas</label>
+            <div class="form-field-wrapper" style="min-width: 0;">
+              <label for="wm-input-crypto-qty" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Quantidade</label>
               <input 
                 id="wm-input-crypto-qty" 
                 type="number" 
@@ -108,6 +108,7 @@ export function openWalletModal(userEmail, walletToEdit = null, onSaved) {
                 class="input" 
                 placeholder="Ex: 0.05"
                 value="${initialCryptoQty}"
+                style="width: 100%;"
               >
             </div>
           </div>

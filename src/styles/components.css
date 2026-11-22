@@ -167,6 +167,11 @@
   box-sizing: border-box;
 }
 
+.form-row.form-row-crypto {
+  grid-template-columns: 1.6fr 1fr;
+  align-items: start;
+}
+
 @media (max-width: 540px) {
   .form-row {
     grid-template-columns: 1fr;
