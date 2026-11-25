@@ -11,6 +11,7 @@ import { auth } from './services/auth.js';
 import { gamification } from './services/gamification.js';
 import { finance } from './services/finance.js';
 import { walletService } from './services/wallet.js';
+import { debtService } from './services/debt.js';
 import { pwa } from './services/pwa.js';
 import { storage } from './services/storage.js';
 
@@ -48,7 +49,8 @@ class App {
         await Promise.all([
           finance.syncWithCloud(user),
           gamification.syncProfileFromCloud(user),
-          walletService.syncWithCloud(user)
+          walletService.syncWithCloud(user),
+          debtService.syncWithCloud(user)
         ]);
 
         finance.generateRecurring(user.email);
@@ -82,7 +84,8 @@ class App {
       await Promise.all([
         finance.syncWithCloud(user),
         gamification.syncProfileFromCloud(user),
-        walletService.syncWithCloud(user)
+        walletService.syncWithCloud(user),
+        debtService.syncWithCloud(user)
       ]);
       const profile = gamification.getProfile(user.email);
       if (!profile) {

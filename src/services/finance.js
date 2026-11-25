@@ -28,6 +28,8 @@ export const CATEGORIES = {
     'IA',
     "APP's",
     'Religião',
+    'Dívidas & Empréstimos',
+    'Compras Parceladas',
     'Outros'
   ],
   investimento: [
@@ -60,6 +62,8 @@ export const CATEGORY_ICONS = {
   "APP's": '📲',
   "APP`s": '📲',
   'Religião': '⛪',
+  'Dívidas & Empréstimos': '💳',
+  'Compras Parceladas': '🛍️',
   'Outros': '📦',
   'Reserva de Emergência': '🛡️',
   'Renda Fixa / CDB / Tesouro': '🏦',

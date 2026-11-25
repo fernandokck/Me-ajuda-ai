@@ -109,17 +109,55 @@ alter table if exists public.profiles add column if not exists subscription_id t
 alter table if exists public.profiles add column if not exists subscription_expires_at timestamptz;
 alter table if exists public.profiles add column if not exists customer_id text;
 
--- 5. POLÍTICAS DE ACESSO (Row Level Security - RLS)
+-- 5. TABELA DE DÍVIDAS & PAGAMENTOS PENDENTES (debts)
+create table if not exists public.debts (
+  id text primary key,
+  user_email text not null,
+  nome text not null,
+  categoria text default 'Dívidas & Empréstimos',
+  valor_total numeric not null default 0,
+  valor_parcela numeric not null default 0,
+  total_parcelas integer not null default 1,
+  parcelas_pagas integer not null default 0,
+  dia_vencimento integer default 10,
+  status text default 'ativa',
+  moeda text default 'BRL',
+  data_inicio text,
+  observacoes text default '',
+  historico jsonb default '[]'::jsonb,
+  user_id text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Ajustes na tabela debts
+alter table if exists public.debts alter column id type text using id::text;
+alter table if exists public.debts add column if not exists user_email text;
+alter table if exists public.debts add column if not exists categoria text default 'Dívidas & Empréstimos';
+alter table if exists public.debts add column if not exists valor_total numeric default 0;
+alter table if exists public.debts add column if not exists valor_parcela numeric default 0;
+alter table if exists public.debts add column if not exists total_parcelas integer default 1;
+alter table if exists public.debts add column if not exists parcelas_pagas integer default 0;
+alter table if exists public.debts add column if not exists dia_vencimento integer default 10;
+alter table if exists public.debts add column if not exists status text default 'ativa';
+alter table if exists public.debts add column if not exists moeda text default 'BRL';
+alter table if exists public.debts add column if not exists data_inicio text;
+alter table if exists public.debts add column if not exists observacoes text default '';
+alter table if exists public.debts add column if not exists historico jsonb default '[]'::jsonb;
+
+-- 6. POLÍTICAS DE ACESSO (Row Level Security - RLS)
 alter table public.transactions enable row level security;
 alter table public.recurring_rules enable row level security;
 alter table public.wallets enable row level security;
 alter table public.profiles enable row level security;
+alter table if exists public.debts enable row level security;
 
 -- Remove políticas antigas para evitar duplicação ou conflito
 drop policy if exists "Permitir tudo em transactions para anon e auth" on public.transactions;
 drop policy if exists "Permitir tudo em recurring_rules para anon e auth" on public.recurring_rules;
 drop policy if exists "Permitir tudo em wallets para anon e auth" on public.wallets;
 drop policy if exists "Permitir tudo em profiles para anon e auth" on public.profiles;
+drop policy if exists "Permitir tudo em debts para anon e auth" on public.debts;
 
 -- Cria políticas universais que permitem Leitura, Inserção, Atualização e Exclusão
 create policy "Permitir tudo em transactions para anon e auth" on public.transactions
@@ -132,4 +170,7 @@ create policy "Permitir tudo em wallets para anon e auth" on public.wallets
   for all using (true) with check (true);
 
 create policy "Permitir tudo em profiles para anon e auth" on public.profiles
+  for all using (true) with check (true);
+
+create policy "Permitir tudo em debts para anon e auth" on public.debts
   for all using (true) with check (true);

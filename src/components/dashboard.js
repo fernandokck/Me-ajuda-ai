@@ -26,6 +26,10 @@ import { showBadgeModal3D } from './badgeModal.js';
 import { openTransactionsModal } from './transactionsModal.js';
 import { openRecurringModal } from './recurringModal.js';
 import { openTransactionEditModal } from './transactionEditModal.js';
+import { debtService, getDebtCategoryIcon } from '../services/debt.js';
+import { openDebtModal } from './debtModal.js';
+import { openDebtEditModal } from './debtEditModal.js';
+import confetti from 'canvas-confetti';
 
 let historyChartInstance = null;
 
@@ -35,6 +39,8 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
   const recorrentes = finance.getRecurring(userEmail);
   const monthlyHistory = finance.getMonthlyHistory(userEmail, 6);
   const budgetData = budgetService.calculateCategoryProgress(userEmail, curMonthKey());
+  const debtSummary = debtService.getSummary(userEmail);
+  const activeDebts = debtSummary.ativas;
 
   const showPwaBanner = !pwa.isDismissedOrInstalled();
 
@@ -400,6 +406,113 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
               </table>
             </div>
           </div>
+
+          <!-- ⏳ Pagamentos Pendentes & Parcelamentos -->
+          <div class="card card-dash-section">
+            <div class="card-title-row">
+              <div>
+                <h3>⏳ Pagamentos Pendentes</h3>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 1px;">
+                  ${debtSummary.ativasCount} ${debtSummary.ativasCount === 1 ? 'dívida ativa' : 'dívidas ativas'}
+                  ${debtSummary.ativasCount > 0 ? ` · Falta pagar ${fmtBRL(debtSummary.totalRestante)}` : ''}
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button id="btn-dash-add-debt" class="btn btn-secondary btn-xs" title="Cadastrar nova dívida ou parcelamento">
+                  ➕ Nova Dívida
+                </button>
+                ${
+                  debtSummary.total > 0
+                    ? `
+                  <button id="btn-dash-open-debt-modal" class="btn btn-secondary btn-xs" title="Ver detalhes completos e parcelamentos">
+                    🔍 Ver todas
+                  </button>
+                `
+                    : ''
+                }
+              </div>
+            </div>
+
+            <div id="dash-debt-list" class="dash-scrollable-list" style="max-height: 280px;">
+              ${
+                debtSummary.total === 0
+                  ? `
+                <div class="empty-state" style="padding: 16px 12px; text-align: center;">
+                  <div style="font-size: 20px; margin-bottom: 4px;">⏳</div>
+                  <div>Nenhum pagamento pendente cadastrado.</div>
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                    Adicione empréstimos ou compras parceladas para descontar todo mês e saber quanto ainda falta pagar!
+                  </div>
+                </div>
+              `
+                  : activeDebts.length === 0
+                  ? `
+                <div class="empty-state" style="padding: 16px 12px; text-align: center;">
+                  <div style="font-size: 20px; margin-bottom: 4px;">🎉</div>
+                  <div>Todas as suas dívidas cadastradas estão quitadas!</div>
+                  <button id="btn-dash-view-quitadas" class="btn btn-ghost btn-xs" style="color: var(--brand); margin-top: 6px;">
+                    Ver dívidas quitadas →
+                  </button>
+                </div>
+              `
+                  : activeDebts
+                      .slice(0, 4)
+                      .map(
+                        (d) => `
+                    <div class="dash-debt-item">
+                      <div class="dash-debt-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <span style="font-size: 16px;">${getDebtCategoryIcon(d.categoria)}</span>
+                          <div>
+                            <strong style="font-size: 13.5px; color: var(--text-main);">${d.nome}</strong>
+                            <div style="font-size: 11px; color: var(--text-muted);">
+                              Todo dia ${d.diaVencimento} · ${fmtBRL(d.valorParcela)}/mês
+                            </div>
+                          </div>
+                        </div>
+                        <div style="text-align: right;">
+                          <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Falta Pagar</div>
+                          <strong style="font-size: 13px; color: var(--red);">${fmtBRL(d.valorRestante)}</strong>
+                        </div>
+                      </div>
+
+                      <div class="dash-debt-progress-row">
+                        <span style="color: var(--text-muted);">
+                          Parcela <strong>${d.parcelasPagas}</strong> de <strong>${d.totalParcelas}</strong>
+                        </span>
+                        <span style="font-weight: 700; color: ${d.progressoPct >= 75 ? 'var(--brand)' : 'var(--amber)'};">
+                          ${d.progressoPct}%
+                        </span>
+                      </div>
+                      <div class="progress-bar" style="height: 5px;">
+                        <div class="progress-bar-inner" style="width: ${d.progressoPct}%; background: ${d.progressoPct >= 75 ? 'var(--brand)' : 'var(--amber)'};"></div>
+                      </div>
+
+                      <div class="dash-debt-footer-row">
+                        <span style="font-size: 10.5px; color: var(--text-muted);">${d.categoria}</span>
+                        <button class="btn btn-primary btn-xs btn-dash-pay-parcela" data-id="${d.id}" style="font-size: 11px; padding: 3px 8px; font-weight: 700;">
+                          💸 Pagar Parcela (${d.parcelasPagas + 1}/${d.totalParcelas})
+                        </button>
+                      </div>
+                    </div>
+                  `
+                      )
+                      .join('')
+              }
+            </div>
+
+            ${
+              activeDebts.length > 4 || debtSummary.total > activeDebts.length
+                ? `
+              <div class="dash-list-footer-cta">
+                <button id="btn-debt-more-footer" class="btn-text-link">
+                  Ver todas as dívidas e histórico detalhado (${debtSummary.total}) →
+                </button>
+              </div>
+            `
+                : ''
+            }
+          </div>
         </div>
       </div>
     </div>
@@ -446,6 +559,70 @@ export function renderDashboard(container, user, onDataChanged, onNavigateTab) {
 
   const btnRecMoreFooter = container.querySelector('#btn-rec-more-footer');
   if (btnRecMoreFooter) btnRecMoreFooter.addEventListener('click', openRecModalHandler);
+
+  // Bind Debt (Pagamentos Pendentes) Modal & Add buttons
+  const openDebtModalHandler = () => {
+    openDebtModal(user, () => {
+      if (onDataChanged) onDataChanged();
+    });
+  };
+
+  const btnDashAddDebt = container.querySelector('#btn-dash-add-debt');
+  if (btnDashAddDebt) {
+    btnDashAddDebt.addEventListener('click', () => {
+      openDebtEditModal(userEmail, null, () => {
+        if (onDataChanged) onDataChanged();
+      });
+    });
+  }
+
+  const btnDashOpenDebtModal = container.querySelector('#btn-dash-open-debt-modal');
+  if (btnDashOpenDebtModal) btnDashOpenDebtModal.addEventListener('click', openDebtModalHandler);
+
+  const btnDebtMoreFooter = container.querySelector('#btn-debt-more-footer');
+  if (btnDebtMoreFooter) btnDebtMoreFooter.addEventListener('click', openDebtModalHandler);
+
+  const btnDashViewQuitadas = container.querySelector('#btn-dash-view-quitadas');
+  if (btnDashViewQuitadas) btnDashViewQuitadas.addEventListener('click', openDebtModalHandler);
+
+  // Bind Quick "Pagar Parcela" buttons directly from Dashboard
+  container.querySelectorAll('.btn-dash-pay-parcela').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const debtId = btn.dataset.id;
+      const debt = activeDebts.find((d) => String(d.id) === String(debtId));
+      if (!debt) return;
+
+      const nextNum = debt.parcelasPagas + 1;
+      const shouldRegisterExpense = confirm(
+        `Confirmar pagamento da parcela ${nextNum}/${debt.totalParcelas} (${fmtBRL(debt.valorParcela)}) de "${debt.nome}"?\n\n` +
+        `Clique em OK para pagar e registrar nas despesas do mês.\n` +
+        `Clique em CANCELAR se não quiser realizar esta ação agora.`
+      );
+
+      if (shouldRegisterExpense) {
+        const res = await debtService.payInstallment(userEmail, debtId, {
+          registerExpense: true,
+          customValor: debt.valorParcela
+        });
+
+        if (res.success) {
+          if (res.isQuitada) {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+            showToast(`🎉 Parabéns! Você quitou todas as parcelas de "${debt.nome}"!`, 'success');
+          } else {
+            showToast(`Parcela ${nextNum}/${debt.totalParcelas} de "${debt.nome}" paga e registrada nas despesas!`, 'success');
+          }
+          if (onDataChanged) onDataChanged();
+        } else {
+          showToast(res.error || 'Erro ao pagar parcela', 'warning');
+        }
+      }
+    });
+  });
 
   // PWA banner installation & dismiss
   const pwaBanner = container.querySelector('#pwa-banner');

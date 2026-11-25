@@ -45,7 +45,8 @@ export const storage = {
       transacoes: this.get('tx_' + cleanEmail, []),
       recorrentes: this.get('rec_' + cleanEmail, []),
       carteira: this.get('wallets_' + cleanEmail, []),
-      budgets: this.get('budgets_' + cleanEmail, {})
+      budgets: this.get('budgets_' + cleanEmail, {}),
+      dividas: this.get('debts_' + cleanEmail, [])
     };
     return JSON.stringify(data, null, 2);
   },
@@ -59,7 +60,8 @@ export const storage = {
       if (Array.isArray(data.recorrentes)) this.set('rec_' + cleanEmail, data.recorrentes);
       if (Array.isArray(data.carteira)) this.set('wallets_' + cleanEmail, data.carteira);
       if (data.budgets) this.set('budgets_' + cleanEmail, data.budgets);
-      return { success: true, count: (data.transacoes?.length || 0) + (data.carteira?.length || 0) };
+      if (Array.isArray(data.dividas)) this.set('debts_' + cleanEmail, data.dividas);
+      return { success: true, count: (data.transacoes?.length || 0) + (data.carteira?.length || 0) + (data.dividas?.length || 0) };
     } catch (e) {
       console.error('Import data error:', e);
       return { success: false, error: e.message };
